@@ -31,6 +31,13 @@ CREATE OR REPLACE FUNCTION lukeapp.seed_plantilla(
   p_version     INT DEFAULT 1
 ) RETURNS VOID AS $$
 BEGIN
+  -- Normalizar: si los elementos vienen como strings JSON (jsonb_build_array
+  -- con literales de texto), convertirlos a objetos jsonb reales.
+  p_payload := (
+    SELECT jsonb_agg(CASE WHEN jsonb_typeof(e) = 'string' THEN (e #>> '{}')::jsonb ELSE e END)
+    FROM jsonb_array_elements(p_payload) e
+  );
+
   DELETE FROM lukeapp.plantillas_catalogo
   WHERE industria = p_industria AND tabla = p_tabla;
 

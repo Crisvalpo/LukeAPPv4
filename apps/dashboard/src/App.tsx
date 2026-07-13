@@ -1,14 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
+import { Login } from './components/auth/Login';
+import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 
 type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote';
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [sessionCargada, setSessionCargada] = useState(false);
   const [vista, setVista] = useState<Vista>('cartera');
-  const [proyectoActivo] = useState('proj-413'); // Piloto 413 Andina
+  // proyecto_id siempre viene del contexto de navegación (drill-down), nunca hardcodeado
+  const [proyectoActivo, setProyectoActivo] = useState<string | null>(null);
   const [loteSeleccionado, setLoteSeleccionado] = useState<string | null>(null);
   const [docSeleccionado, setDocSeleccionado] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setSessionCargada(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAbrirIngesta = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('ingesta_ia');
+  };
 
   const handleSelectLote = (loteId: string, docId: string) => {
     setLoteSeleccionado(loteId);
@@ -22,15 +45,39 @@ function App() {
     setDocSeleccionado(null);
   };
 
+  const handleBackToCartera = () => {
+    setVista('cartera');
+    setProyectoActivo(null);
+    setLoteSeleccionado(null);
+    setDocSeleccionado(null);
+  };
+
   const handleCompletado = () => {
     alert('🎉 ¡Lote de importación IA aprobado y aplicado exitosamente a las tablas de catálogo!');
     handleBackToBiblioteca();
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    handleBackToCartera();
+  };
+
+  if (!sessionCargada) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', color: '#94a3b8' }}>
+        Cargando…
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Login />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
-      
-      {/* Barra de Navegación Premium */}
+
+      {/* Barra de Navegación */}
       <header style={{
         height: '64px',
         background: 'rgba(30, 41, 59, 0.8)',
@@ -44,121 +91,78 @@ function App() {
         top: 0,
         zIndex: 50
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            fontSize: '1.4rem',
-            fontWeight: 800,
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            onClick={handleBackToCartera}
+            style={{
+              fontSize: '1.4rem',
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              cursor: 'pointer'
+            }}
+          >
             LukeAPP v4
           </div>
-          <span style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
-            color: '#38bdf8',
-            fontSize: '0.75rem',
-            padding: '2px 8px',
-            borderRadius: '4px',
-            fontWeight: 'bold'
-          }}>
-            PROYECTO PILOTO 413
-          </span>
+          {vista !== 'cartera' && (
+            <button
+              onClick={handleBackToCartera}
+              style={{
+                background: 'none',
+                border: '1px solid #334155',
+                color: '#94a3b8',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '6px 14px',
+                borderRadius: '6px'
+              }}
+            >
+              ← Cartera
+            </button>
+          )}
         </div>
 
-        <nav style={{ display: 'flex', gap: '16px' }}>
-          <button 
-            onClick={() => setVista('cartera')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{session.user.email}</span>
+          <button
+            onClick={handleLogout}
             style={{
-              background: 'none',
-              border: 'none',
-              color: vista === 'cartera' ? '#38bdf8' : '#94a3b8',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid #334155',
+              color: '#cbd5e1',
+              fontSize: '0.85rem',
               fontWeight: 600,
-              fontSize: '0.9rem',
               cursor: 'pointer',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              backgroundColor: vista === 'cartera' ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
-              transition: 'all 0.2s'
+              padding: '6px 14px',
+              borderRadius: '6px'
             }}
           >
-            📊 Cartera de Proyectos
+            Salir
           </button>
-          
-          <button 
-            onClick={() => setVista('ingesta_ia')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: vista === 'ingesta_ia' || vista === 'revision_lote' ? '#a855f7' : '#94a3b8',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              backgroundColor: vista === 'ingesta_ia' || vista === 'revision_lote' ? 'rgba(168, 85, 247, 0.08)' : 'transparent',
-              transition: 'all 0.2s'
-            }}
-          >
-            ✨ Ingesta Documental IA
-          </button>
-        </nav>
+        </div>
       </header>
 
       {/* Contenido Principal */}
       <main style={{ flexGrow: 1 }}>
         {vista === 'cartera' && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '80vh',
-            textAlign: 'center',
-            padding: '24px'
-          }}>
-            <div>
-              <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', background: 'linear-gradient(135deg, #f8fafc, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                LukeAPP Dashboard Cartera
-              </h1>
-              <p style={{ color: '#94a3b8', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto 2rem auto', lineHeight: 1.6 }}>
-                Plataforma de trazabilidad multi-proyecto de prefabricación y montaje. Revisa indicadores y avance físico de juntas, spools y materiales críticos.
-              </p>
-              <button 
-                onClick={() => setVista('ingesta_ia')}
-                style={{
-                  background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 28px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(168, 85, 247, 0.3)',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Probar Ingesta IA
-              </button>
-            </div>
-          </div>
+          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} />
         )}
 
-        {vista === 'ingesta_ia' && (
-          <BibliotecaDocumental 
-            proyectoId={proyectoActivo} 
-            onSelectLote={handleSelectLote} 
+        {vista === 'ingesta_ia' && proyectoActivo && (
+          <BibliotecaDocumental
+            proyectoId={proyectoActivo}
+            onSelectLote={handleSelectLote}
           />
         )}
 
         {vista === 'revision_lote' && loteSeleccionado && docSeleccionado && (
-          <RevisionLoteIA 
-            loteId={loteSeleccionado} 
-            docId={docSeleccionado} 
-            onBack={handleBackToBiblioteca} 
-            onCompletado={handleCompletado} 
+          <RevisionLoteIA
+            loteId={loteSeleccionado}
+            docId={docSeleccionado}
+            onBack={handleBackToBiblioteca}
+            onCompletado={handleCompletado}
           />
         )}
       </main>
