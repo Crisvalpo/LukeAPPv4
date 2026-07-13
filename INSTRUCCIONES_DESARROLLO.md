@@ -84,7 +84,13 @@ Claves naturales por tabla (declarar en código, no hardcodear en SQL): mto → 
 - [x] **F0.1** Inicializar monorepo (pnpm workspaces) + `supabase init` + CI básico (lint, tsc, `supabase db reset` en verde). ✅ 2026-07-13 — Monorepo pnpm, apps/terreno + apps/oficina (Vite+React+TS), packages/shared, etl/requirements.txt, .github/workflows/ci.yml
 - [x] **F0.2** Migración SQL núcleo (2.1) con triggers de auditoría y RLS. ✅ 2026-07-13 — 11 tablas en schema `lukeapp` (empresas, proyectos, proyecto_config, usuarios, membresias, permisos_rol, plantillas_catalogo, evidencias, import_perfiles, import_lotes, import_filas), 7 ENUMs, funciones tiene_membresia/tiene_permiso_escritura, trigger auto-creación de perfil. RLS verificada (0 tablas sin RLS).
 - [x] **F0.3** Migración SQL dominios piping + mecánica (2.2) con FKs e índices por `proyecto_id`. ✅ 2026-07-13 — 44 tablas en schema `lukeapp`: 14 cat_*, 13 list_* (cadena lineas→isos→spools→juntas), 6 log_*, 8 reg_*, 2 rel_*, 1 doc_*. Total schema: 55 tablas, todas con RLS activa. PGRST_DB_SCHEMAS actualizado (lukeapp expuesto vía Kong).
-- [ ] **F0.4** Seeds `plantillas_catalogo`: 3 industrias. Partir de los CAT reales del 413 para minería; refinería y celulosa con plantillas base (clases aleadas+PWHT / inox-dúplex+PMI) a validar con OT.
+- [ ] **F0.4** Seeds `plantillas_catalogo`: 3 industrias. Partir de los CAT reales del 413 para minería; refinería y celulosa con plantillas base (clases aleadas+PWHT / inox-dúplex+PMI) marcadas `borrador — validar con OT`. No incluir personal ni CWA/CWP (se cargan por proyecto).
+- [ ] **F0.4b** **Ingesta documental con IA** (migración 004 + servicio):
+  - Tablas: `doc_biblioteca` (proyecto_id, tipo_documento [adenda/especificacion/estandar/cwp/line_list/otro], titulo, storage_path, hash, estado_procesamiento, metadata JSONB) y `doc_chunks` (documento_id, nro_chunk, contenido, embedding vector, pagina) — habilitar extensión pgvector.
+  - Pipeline: subir PDF → texto (OCR si escaneado) → chunking + embeddings → extracción estructurada con Gemini según tipo de documento (ej. de una especificación: clases piping, % NDE, requisitos PWHT/PMI; de un CWP: alcance y códigos).
+  - La extracción genera `import_lotes` con `origen = 'extraccion_ia'` y confianza por campo → mismo flujo de diff + aprobación del importador (M3). Agregar columna `origen` a `import_lotes` y `fuente` (documento_id, página) + `confianza` a `import_filas`.
+  - UI mínima en `apps/dashboard`: subir documento, ver estado, revisar/aprobar propuestas extraídas.
+  - Doble propósito: acelera el poblamiento de catálogos/config del proyecto Y construye la base de conocimiento RAG que consumirá el bot (F3.2).
 - [ ] **F0.5** ETL migración 413 (`/etl/migrar_413.py`):
   - Leer los 7 libros Excel v1; sanear: trim de encabezados, eliminar columnas `Column*` y hojas espejo (`REG_EjecucionJuntas_MS (2)` se consolida con la principal deduplicando por ID), normalizar fechas y NPS.
   - Modo `--dry-run` que emite reporte de inconsistencias (FKs rotas, IDs duplicados, filas sin clave) ANTES de cargar; la carga real exige reporte limpio o excepciones aprobadas.
@@ -125,7 +131,7 @@ Claves naturales por tabla (declarar en código, no hardcodear en SQL): mto → 
 ## FASE 3 — Módulos avanzados (reimplementados en v4) + proyecto nuevo
 
 - [ ] **F3.1** Wizard "Nuevo proyecto": código, mandante, industria → clona `plantillas_catalogo` + `permisos_rol` plantilla → invita usuarios con roles. Objetivo: proyecto operativo en <1 día.
-- [ ] **F3.2** Bot WhatsApp v4 (nuevo, referencia funcional: `lib/bot.js` de andina-dashboard): reporte conversacional de avance por chat/audio, multi-proyecto (usuario→membresía→proyecto activo), escribe en `log_*`/`reg_*` vía API con Supabase Auth; auditoría propia.
+- [ ] **F3.2** Bot WhatsApp v4 (nuevo, referencia funcional: `lib/bot.js` de andina-dashboard): reporte conversacional de avance por chat/audio, multi-proyecto (usuario→membresía→proyecto activo), escribe en `log_*`/`reg_*` vía API con Supabase Auth; auditoría propia. **RAG sobre `doc_chunks`** (F0.4b): el bot responde consultas técnicas citando adendas, especificaciones y estándares del proyecto activo.
 - [ ] **F3.3** Visor BIM v4 (nuevo, referencia funcional: módulo BIM de andina-dashboard): vinculación elemento 3D ↔ spool (`list_bim`), colores por estado, por proyecto.
 - [ ] **F3.4** Onboarding del primer contrato nuevo real; retiro programado de AppSheet (v1 queda en solo-lectura como archivo histórico).
 - ✅ **Criterio de salida**: contrato nuevo operando sin tocar Excel salvo el flujo del cubicador (que es por diseño).

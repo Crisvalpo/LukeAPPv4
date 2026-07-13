@@ -25,3 +25,10 @@ xxhash>=3.4.1
 
 # Utilidades de fechas
 python-dateutil>=2.9.0
+
+# SDK de IA de Google
+google-generativeai>=0.8.1
+
+# Parser de PDF para extracción de texto
+pypdf>=4.3.1
+

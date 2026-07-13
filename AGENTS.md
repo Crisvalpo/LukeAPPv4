@@ -38,6 +38,13 @@ El cubicador seguirá trabajando en Excel: la plataforma **nunca le exige cambia
 - Mapeos columna-Excel → campo-BD configurables por proyecto (`import_perfiles`). El archivo original se conserva en Storage con hash.
 - Aplicar un lote es transaccional: entra todo el diff aprobado, o nada.
 
+## Reglas de ingesta documental con IA
+Los entregables del cliente (adendas, especificaciones técnicas, estándares, CWP, line lists en PDF) se cargan a una **biblioteca documental por proyecto** y se procesan con IA para dos fines: extracción asistida de datos y base de conocimiento para el bot (F3.2).
+- Documento original siempre a Storage (bucket privado) + registro en `doc_biblioteca`; texto extraído se trocea a `doc_chunks` con embeddings (pgvector) para RAG futuro.
+- **La extracción IA nunca escribe directo en `cat_*`/`list_*`/`proyecto_config`**: genera un `import_lote` con `origen = 'extraccion_ia'` y confianza por campo, que pasa por el mismo flujo de diff + aprobación humana del importador. La IA propone, OT aprueba.
+- Registrar siempre trazabilidad: de qué documento y página salió cada dato extraído (`import_filas.fuente`).
+- LLM: Gemini (API ya usada por el equipo); nunca enviar documentos a servicios no aprobados.
+
 ## Reglas offline (PWA terreno)
 - Toda escritura de terreno va a SQLite local (PowerSync) y se encola; la app jamás requiere red para registrar. Sin spinners bloqueantes por conectividad.
 - Fotos: compresión en cliente (~1600px), cola local, subida a Storage al reconectar; el registro nunca espera la foto.
