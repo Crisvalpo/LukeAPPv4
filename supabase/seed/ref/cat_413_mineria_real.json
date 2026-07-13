@@ -1,0 +1,519 @@
+{
+ "CAT_FluidoServicio_MS": [
+  {
+   "ID_FLUIDO": "CT",
+   "NOMBRE": "Concentrado Cu - Mo",
+   "DESCRIPCION": "Pulpa / Concentrado abrasivo",
+   "COLOR_NOMBRE": "Marrón",
+   "COLOR_PINTURA": "Definir"
+  },
+  {
+   "ID_FLUIDO": "PW",
+   "NOMBRE": "Agua de Proceso",
+   "DESCRIPCION": "Agua limpia de proceso",
+   "COLOR_NOMBRE": "Verde",
+   "COLOR_PINTURA": "Definir"
+  },
+  {
+   "ID_FLUIDO": "GW",
+   "NOMBRE": "Agua de Sello",
+   "DESCRIPCION": "Agua de sello de bombas",
+   "COLOR_NOMBRE": "Verde",
+   "COLOR_PINTURA": "Definir"
+  },
+  {
+   "ID_FLUIDO": "RW",
+   "NOMBRE": "Agua Recuperada",
+   "DESCRIPCION": "Agua reutilizada",
+   "COLOR_NOMBRE": "Verde",
+   "COLOR_PINTURA": "Definir"
+  },
+  {
+   "ID_FLUIDO": "IA",
+   "NOMBRE": "Aire de Instrumentacion",
+   "DESCRIPCION": "Aire comprimido de control",
+   "COLOR_NOMBRE": "Celeste",
+   "COLOR_PINTURA": "Definir"
+  },
+  {
+   "ID_FLUIDO": "FP",
+   "NOMBRE": "Agua Contra Incendio",
+   "DESCRIPCION": "Protección incendio",
+   "COLOR_NOMBRE": "Rojo",
+   "COLOR_PINTURA": "Definir"
+  }
+ ],
+ "CAT_ClasePiping_MS": [
+  {
+   "ID_CLASE": "C1",
+   "MATERIAL": "Acero carbono ASTM A106/A53 Gr B",
+   "PRESION_DISENO_PSI": 285,
+   "PRESION_DISENO_KG": 20,
+   "TEMP_DISENO_C": 38,
+   "APLICACION": "PW , GW"
+  },
+  {
+   "ID_CLASE": "C2",
+   "MATERIAL": "Acero carbono ASTM A53 Gr B (liso)",
+   "PRESION_DISENO_PSI": 285,
+   "PRESION_DISENO_KG": 20,
+   "TEMP_DISENO_C": 38,
+   "APLICACION": "CT"
+  },
+  {
+   "ID_CLASE": "C3",
+   "MATERIAL": "Acero carbono + Neopreno interior (R3)",
+   "PRESION_DISENO_PSI": 285,
+   "PRESION_DISENO_KG": 20,
+   "TEMP_DISENO_C": 38,
+   "APLICACION": "CT"
+  },
+  {
+   "ID_CLASE": "C5",
+   "MATERIAL": "Acero carbono ASTM A53 Gr B (incendio)",
+   "PRESION_DISENO_PSI": 175,
+   "PRESION_DISENO_KG": 12.3,
+   "TEMP_DISENO_C": 40,
+   "APLICACION": "FP"
+  },
+  {
+   "ID_CLASE": "C11",
+   "MATERIAL": "Acero carbono + Goma natural interior",
+   "PRESION_DISENO_PSI": 285,
+   "PRESION_DISENO_KG": 20,
+   "TEMP_DISENO_C": 38,
+   "APLICACION": "CT"
+  },
+  {
+   "ID_CLASE": "G1",
+   "MATERIAL": "Acero galvanizado ASTMA53",
+   "PRESION_DISENO_PSI": 285,
+   "PRESION_DISENO_KG": 20,
+   "TEMP_DISENO_C": 38,
+   "APLICACION": "IA"
+  },
+  {
+   "ID_CLASE": "H1",
+   "MATERIAL": "HDPE PE100 PN6",
+   "PRESION_DISENO_PSI": 90,
+   "PRESION_DISENO_KG": 6.3,
+   "TEMP_DISENO_C": 20,
+   "APLICACION": "RW , CT"
+  },
+  {
+   "ID_CLASE": "H2",
+   "MATERIAL": "HDPE PE100 PN10",
+   "PRESION_DISENO_PSI": 145,
+   "PRESION_DISENO_KG": 10.2,
+   "TEMP_DISENO_C": 20,
+   "APLICACION": "CT"
+  }
+ ],
+ "CAT_DiametrosNPS_MS": [
+  {
+   "ID_NPS": "3/4",
+   "DIAMETRO_WDI": 0.75,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 1,
+   "DIAMETRO_WDI": 1,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": "1.1/4",
+   "DIAMETRO_WDI": 1.25,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.11",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": "1.1/2",
+   "DIAMETRO_WDI": 1.5,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.11",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 2,
+   "DIAMETRO_WDI": 2,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 3,
+   "DIAMETRO_WDI": 3,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 4,
+   "DIAMETRO_WDI": 4,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 6,
+   "DIAMETRO_WDI": 6,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 8,
+   "DIAMETRO_WDI": 8,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 10,
+   "DIAMETRO_WDI": 10,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 12,
+   "DIAMETRO_WDI": 12,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 16,
+   "DIAMETRO_WDI": 16,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": "18",
+   "DIAMETRO_WDI": 18,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 24,
+   "DIAMETRO_WDI": 24,
+   "TIPO_MATERIAL": "Acero Carbono ASME B36.10",
+   "UNIDAD_MEDIDA": "Pulgadas"
+  },
+  {
+   "ID_NPS": 50,
+   "DIAMETRO_WDI": 2,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 110,
+   "DIAMETRO_WDI": 4,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 160,
+   "DIAMETRO_WDI": 6,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 200,
+   "DIAMETRO_WDI": 8,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 250,
+   "DIAMETRO_WDI": 10,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 315,
+   "DIAMETRO_WDI": 12,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 400,
+   "DIAMETRO_WDI": 16,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  },
+  {
+   "ID_NPS": 450,
+   "DIAMETRO_WDI": 18,
+   "TIPO_MATERIAL": "HDPE (ISO 4427)",
+   "UNIDAD_MEDIDA": "Milimetros"
+  }
+ ],
+ "CAT_AislacionExt_MS": [
+  {
+   "ID_AISLACION_EXT": "N",
+   "TIPO_AISLACION": "Sin Aislación",
+   "RESTRICCION_PINTURA": "La cañería luce el esquema de pintura asignado"
+  },
+  {
+   "ID_AISLACION_EXT": "HC",
+   "TIPO_AISLACION": "Conservación de Calor",
+   "RESTRICCION_PINTURA": "La línea va revestida en chaqueta metálica o térmica exterior."
+  },
+  {
+   "ID_AISLACION_EXT": "PP",
+   "TIPO_AISLACION": "Protección Personal",
+   "RESTRICCION_PINTURA": "Malla o recubrimiento externo de seguridad."
+  },
+  {
+   "ID_AISLACION_EXT": "ET",
+   "TIPO_AISLACION": "Electrical Tracing",
+   "RESTRICCION_PINTURA": "Requiere llenado del campo TEMP_TRACING en el Line List."
+  }
+ ],
+ "CAT_EsquemaPintura_MS": [
+  {
+   "ID_PINTURA": "EPC-9",
+   "SISTEMA_APLICACION": "Acero Superficial (Cordillerano)",
+   "PREPARACION_SUPERFICIE": "SSPC-SP10",
+   "CAPAS": 4,
+   "ESPESOR_TOTAL_UM": 275,
+   "DETALLE_CAPAS": "Imprimante P14 (100) + Inter P14 (100) + Term P19 (50) + Sello P25 (25)"
+  },
+  {
+   "ID_PINTURA": "TRICAPA",
+   "SISTEMA_APLICACION": "Acero Enterrado (FBE)",
+   "PREPARACION_SUPERFICIE": "SSPC-SP5",
+   "CAPAS": 3,
+   "ESPESOR_TOTAL_UM": 2125,
+   "DETALLE_CAPAS": "Capa 1 FBE (150) + Capa 2 Adhesivo (175) + Capa 3 HDPE (1800)"
+  },
+  {
+   "ID_PINTURA": "C209",
+   "SISTEMA_APLICACION": "Acero Enterrado (Cintas)",
+   "PREPARACION_SUPERFICIE": "Manual/Mecánico",
+   "CAPAS": 2,
+   "ESPESOR_TOTAL_UM": 0,
+   "DETALLE_CAPAS": "Puente adherencia + Cinta anticorrosiva AWWA C209"
+  },
+  {
+   "ID_PINTURA": "C210",
+   "SISTEMA_APLICACION": "Acero Enterrado (Líquido)",
+   "PREPARACION_SUPERFICIE": "Automático",
+   "CAPAS": 0,
+   "ESPESOR_TOTAL_UM": 0,
+   "DETALLE_CAPAS": "Revestimiento epóxico líquido AWWA C210"
+  },
+  {
+   "ID_PINTURA": "N/A",
+   "SISTEMA_APLICACION": "Sin Esquema Pintura",
+   "PREPARACION_SUPERFICIE": "N/A",
+   "CAPAS": 0,
+   "ESPESOR_TOTAL_UM": 0,
+   "DETALLE_CAPAS": "Aplica para HDPE, Galvanizado o PVC"
+  }
+ ],
+ "CAT_PorcentajeNDE_MS": [
+  {
+   "ID_NDE": "VT",
+   "PORCENTAJE_NDE": 1,
+   "METODO": "Inspección Visual",
+   "APLICACION": "Aplica a todo",
+   "NORMA": null
+  },
+  {
+   "ID_NDE": "RT",
+   "PORCENTAJE_NDE": 1,
+   "METODO": "Radiografía",
+   "APLICACION": "Uniones a tope BW (Acero) Uniones de Terreno",
+   "NORMA": "Norma API 1104"
+  },
+  {
+   "ID_NDE": "PT",
+   "PORCENTAJE_NDE": 1,
+   "METODO": "Líquidos Penetrantes",
+   "APLICACION": "Uniones no BW (Acero)",
+   "NORMA": null
+  },
+  {
+   "ID_NDE": "UT",
+   "PORCENTAJE_NDE": 1,
+   "METODO": "Ultrasonido",
+   "APLICACION": "Termofusión (HDPE)",
+   "NORMA": "ASME B31.3"
+  },
+  {
+   "ID_NDE": "DT",
+   "PORCENTAJE_NDE": 0.05,
+   "METODO": "Ensayo Destructivo Aleatorio",
+   "APLICACION": "Termofusión (HDPE)",
+   "NORMA": "ASTM F2620"
+  }
+ ],
+ "CAT_RevestimientoInt_MS": [
+  {
+   "ID_REVESTIMIENTO_INT": "N",
+   "TIPO_REVESTIMIENTO": "Sin Revestimiento Interior",
+   "ESPECIFICACION": "Cañerías desnudas"
+  },
+  {
+   "ID_REVESTIMIENTO_INT": "R1",
+   "TIPO_REVESTIMIENTO": "Rubber Lined (6mm)",
+   "ESPECIFICACION": "Cajas compensadoras, spooling crítico de agua turbia"
+  },
+  {
+   "ID_REVESTIMIENTO_INT": "R2",
+   "TIPO_REVESTIMIENTO": "Rubber Lined (12mm)",
+   "ESPECIFICACION": "Zonas de mayor desgaste"
+  },
+  {
+   "ID_REVESTIMIENTO_INT": "R3",
+   "TIPO_REVESTIMIENTO": "Poliuretano (15mm)",
+   "ESPECIFICACION": "Exclusivo para Líneas de Concentrado (CT)"
+  }
+ ],
+ "CAT_TipoPrueba_MS": [
+  {
+   "ID_PRUEBA": "Hidrostatica",
+   "APLICACION": "Prueba hidrostática acero",
+   "CONDICION_DISENO": "1.5x diseño, 2h",
+   "MEDIO_FLUIDO": "Agua Potable"
+  },
+  {
+   "ID_PRUEBA": "Hidrostatica HDPE",
+   "APLICACION": "Prueba hidrostática plásticos",
+   "CONDICION_DISENO": "1.5x nominal",
+   "MEDIO_FLUIDO": "Agua Potable"
+  },
+  {
+   "ID_PRUEBA": "Neumática",
+   "APLICACION": "Prueba neumática gas",
+   "CONDICION_DISENO": "1.1x diseño",
+   "MEDIO_FLUIDO": "Aire Comprimido"
+  }
+ ],
+ "CAT_TipoSoporte_MS": [
+  {
+   "ID_TIPO_SOPORTE": "ES-02",
+   "DESCRIPCION": "SOPORTE TRUNNION"
+  },
+  {
+   "ID_TIPO_SOPORTE": "MS-06",
+   "DESCRIPCION": "MARCO SOPORTE TIPO \"L\""
+  },
+  {
+   "ID_TIPO_SOPORTE": "PU-01",
+   "DESCRIPCION": "PERNO U LARGO"
+  },
+  {
+   "ID_TIPO_SOPORTE": "SA-10",
+   "DESCRIPCION": "ABRAZADERA ESTANDAR"
+  },
+  {
+   "ID_TIPO_SOPORTE": "SE-01",
+   "DESCRIPCION": "SOPORTE ESCUADRA"
+  },
+  {
+   "ID_TIPO_SOPORTE": "SL-01",
+   "DESCRIPCION": "ANGULO ANCLAJE LATERAL"
+  },
+  {
+   "ID_TIPO_SOPORTE": "SL-02",
+   "DESCRIPCION": "ANGULO ANCLAJE LATERAL"
+  },
+  {
+   "ID_TIPO_SOPORTE": "SP-05",
+   "DESCRIPCION": "SOPORTE PUNTUAL APOYO CAÑERIAS"
+  },
+  {
+   "ID_TIPO_SOPORTE": "ST-01",
+   "DESCRIPCION": "TRAPECIO ANGULO TIPO A"
+  }
+ ],
+ "CAT_TipoUnion_MS": [
+  {
+   "ID_TIPO_UNION": "BW",
+   "ACRONIMO": "BW",
+   "NMB_UNION": "Butt Weld",
+   "TIPO_UNIONES": "Soldadura a Tope",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": "RT",
+   "APLICACION": "Cañerías metálicas (ASME B16.25)"
+  },
+  {
+   "ID_TIPO_UNION": "SW",
+   "ACRONIMO": "SW",
+   "NMB_UNION": "Socket Weld",
+   "TIPO_UNIONES": "Soldadura a Encaje",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": "PT",
+   "APLICACION": "Cañerías metálicas (Fitting/Válvula)"
+  },
+  {
+   "ID_TIPO_UNION": "THD",
+   "ACRONIMO": "THD",
+   "NMB_UNION": "Threaded",
+   "TIPO_UNIONES": "Conexiones Roscadas",
+   "METODO_TRABAJO": "ROSCADO",
+   "NDE_REQUERIDO": "VT",
+   "APLICACION": "NPT (ASME B1.20.1)"
+  },
+  {
+   "ID_TIPO_UNION": "VIC",
+   "ACRONIMO": "VIC",
+   "NMB_UNION": "Grooved",
+   "TIPO_UNIONES": "Acoples Ranurados",
+   "METODO_TRABAJO": "MECÁNICO",
+   "NDE_REQUERIDO": "VT",
+   "APLICACION": "Acoples tipo Victaulic"
+  },
+  {
+   "ID_TIPO_UNION": "TF",
+   "ACRONIMO": "TF",
+   "NMB_UNION": "Butt Fusion",
+   "TIPO_UNIONES": "Fusión a Tope",
+   "METODO_TRABAJO": "FUSIÓN",
+   "NDE_REQUERIDO": "UT",
+   "APLICACION": "Termofusión automatizada (HDPE)"
+  },
+  {
+   "ID_TIPO_UNION": "BT",
+   "ACRONIMO": "BT",
+   "NMB_UNION": "Flanged",
+   "TIPO_UNIONES": "Unión con Bridas",
+   "METODO_TRABAJO": "EMPERNADO",
+   "NDE_REQUERIDO": "VT",
+   "APLICACION": "Válvulas y equipos (FF/RF)"
+  },
+  {
+   "ID_TIPO_UNION": "SO",
+   "ACRONIMO": "SO",
+   "NMB_UNION": "Slip On",
+   "TIPO_UNIONES": "Soldadura Deslizable (Filete)",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": "PT",
+   "APLICACION": "Bridas para tuberías metálicas (ASME B16.5 / B16.47)"
+  },
+  {
+   "ID_TIPO_UNION": "LET",
+   "ACRONIMO": "LET",
+   "NMB_UNION": "Fillet Weld",
+   "TIPO_UNIONES": "Soldadura por Filete",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": "PT",
+   "APLICACION": "Uniones metálicas (Refuerzo / Filete)"
+  },
+  {
+   "ID_TIPO_UNION": "TW",
+   "ACRONIMO": "TW",
+   "NMB_UNION": "TACK WELD",
+   "TIPO_UNIONES": "SOLDADURA POR PUNTOS",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": null,
+   "APLICACION": "AJUSTE EN TERRENO"
+  },
+  {
+   "ID_TIPO_UNION": "BRW",
+   "ACRONIMO": "BRW",
+   "NMB_UNION": "Branch Weld",
+   "TIPO_UNIONES": "Soldadura de Ramal / Derivación",
+   "METODO_TRABAJO": "SOLDADURA",
+   "NDE_REQUERIDO": null,
+   "APLICACION": null
+  }
+ ]
+}

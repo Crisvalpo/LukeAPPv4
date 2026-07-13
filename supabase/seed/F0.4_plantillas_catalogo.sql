@@ -1,22 +1,28 @@
 -- ============================================================
--- LukeAPP v4 — Seed: plantillas_catalogo (3 industrias)
+-- LukeAPP v4 — Seed: plantillas_catalogo (3 industrias) — CORREGIDO
 -- Schema: lukeapp
 -- Depende de: 001_nucleo (tabla plantillas_catalogo)
--- Rev. B — Julio 2026
+-- Rev. C — Julio 2026
 --
--- MINERÍA: basado en CAT reales del 413 (EIMI00413 Andina)
---   Clases carbono, presiones medias, PWHT según clase
--- REFINERÍA: plantilla base — clases aleadas + PWHT extensivo + PMI
---   marcada "borrador — validar con OT" en metadata
--- CELULOSA: plantilla base — inox/dúplex + PMI obligatorio
---   marcada "borrador — validar con OT" en metadata
+-- MINERÍA: Regenerado desde cat_413_mineria_real.json (Piloto 413 real)
+--   Conteo de registros minería:
+--   - cat_fluido_servicio: 6
+--   - cat_clase_piping: 8
+--   - cat_diametros_nps: 22
+--   - cat_aislacion_ext: 4
+--   - cat_esquema_pintura: 5
+--   - cat_porcentaje_nde: 5
+--   - cat_revestimiento_int: 4
+--   - cat_tipo_prueba: 3
+--   - cat_tipo_soporte: 9
+--   - cat_tipo_union: 10
 --
--- NO incluye: cat_personal, cat_cwa, cat_cwp, cat_iwp
--- (se cargan por proyecto, no son plantillas de industria)
+-- REFINERÍA: plantilla base (borrador — validar con OT)
+-- CELULOSA: plantilla base (borrador — validar con OT)
 -- ============================================================
 
--- ─── Función helper: insertar plantilla ──────────────────────
--- Evita duplicados en re-ejecución (idempotente)
+-- ─── Función helper: upsert de plantilla ────────────────────
+-- Elimina el registro anterior de la industria + tabla para evitar duplicidad
 CREATE OR REPLACE FUNCTION lukeapp.seed_plantilla(
   p_industria   lukeapp.industria_tipo,
   p_dominio     TEXT,
@@ -25,148 +31,141 @@ CREATE OR REPLACE FUNCTION lukeapp.seed_plantilla(
   p_version     INT DEFAULT 1
 ) RETURNS VOID AS $$
 BEGIN
+  DELETE FROM lukeapp.plantillas_catalogo
+  WHERE industria = p_industria AND tabla = p_tabla;
+
   INSERT INTO lukeapp.plantillas_catalogo
     (industria, dominio, tabla, payload, version, activo)
   VALUES
-    (p_industria, p_dominio, p_tabla, p_payload, p_version, true)
-  ON CONFLICT DO NOTHING;
+    (p_industria, p_dominio, p_tabla, p_payload, p_version, true);
 END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================================
--- ██████████████  MINERÍA  ██████████████
--- Fuente: CAT reales del 413 (EIMI00413 Andina, minería del cobre)
+-- ██████████████  MINERÍA (REAL DEL PILOTO 413)  ██████████████
 -- ============================================================
 
--- ── cat_fluido_servicio (minería) ─────────────────────────────
+-- 1. cat_fluido_servicio (minería) — 6 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_fluido_servicio', 'cat_fluido_servicio', jsonb_build_array(
-  '{"codigo":"AG","descripcion":"Agua de servicio"}',
-  '{"codigo":"AP","descripcion":"Agua potable"}',
-  '{"codigo":"AI","descripcion":"Aire instrumental"}',
-  '{"codigo":"AS","descripcion":"Aire de servicio"}',
-  '{"codigo":"PF","descripcion":"Pulpa de flotación"}',
-  '{"codigo":"PR","descripcion":"Pulpa de relaves"}',
-  '{"codigo":"AC","descripcion":"Ácido sulfúrico"}',
-  '{"codigo":"HG","descripcion":"Hipoclorito de sodio"}',
-  '{"codigo":"HV","descripcion":"Hidróxido de cal"}',
-  '{"codigo":"CU","descripcion":"Cobre electrolítico (slurry)"}',
-  '{"codigo":"GN","descripcion":"Gas natural"}',
-  '{"codigo":"VN","descripcion":"Vapor"}',
-  '{"codigo":"CO","descripcion":"Condensado"}',
-  '{"codigo":"DR","descripcion":"Drenaje"}',
-  '{"codigo":"VA","descripcion":"Ventilación / alivio"}'
+  '{"codigo":"CT","descripcion":"Concentrado Cu - Mo"}',
+  '{"codigo":"PW","descripcion":"Agua de Proceso"}',
+  '{"codigo":"GW","descripcion":"Agua de Sello"}',
+  '{"codigo":"RW","descripcion":"Agua Recuperada"}',
+  '{"codigo":"IA","descripcion":"Aire de Instrumentacion"}',
+  '{"codigo":"FP","descripcion":"Agua Contra Incendio"}'
 )::jsonb);
 
--- ── cat_clase_piping (minería) ─────────────────────────────────
--- Clases típicas de proyecto minero (carbono/ASTM A106/A53, medias presiones)
+-- 2. cat_clase_piping (minería) — 8 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_clase_piping', 'cat_clase_piping', jsonb_build_array(
-  '{"codigo":"A1","descripcion":"Carbono Sch40 150# — Agua, drenaje","presion_max":1034,"temp_max":93,"usa_pwht":false}',
-  '{"codigo":"A2","descripcion":"Carbono Sch80 300# — Agua a presión","presion_max":2068,"temp_max":120,"usa_pwht":false}',
-  '{"codigo":"B1","descripcion":"Carbono HDPE — Pulpa abrasiva NPS≤12","presion_max":690,"temp_max":60,"usa_pwht":false}',
-  '{"codigo":"B2","descripcion":"Carbono AR400 — Pulpa abrasiva NPS>12","presion_max":690,"temp_max":60,"usa_pwht":false}',
-  '{"codigo":"C1","descripcion":"FRP/GRP — Ácido sulfúrico diluido","presion_max":690,"temp_max":60,"usa_pwht":false}',
-  '{"codigo":"D1","descripcion":"Carbono Sch40 — Vapor 150#","presion_max":1034,"temp_max":186,"usa_pwht":false}',
-  '{"codigo":"D2","descripcion":"Carbono Sch80 — Vapor 300# (PWHT >NPS2)","presion_max":2068,"temp_max":232,"usa_pwht":true}',
-  '{"codigo":"E1","descripcion":"Carbono Sch40 — Gas / Hidrocarburo 150#","presion_max":1034,"temp_max":120,"usa_pwht":false}',
-  '{"codigo":"E2","descripcion":"Carbono Sch80 — Gas / Hidrocarburo 300# (PWHT)","presion_max":2068,"temp_max":120,"usa_pwht":true}',
-  '{"codigo":"F1","descripcion":"HDPE SDR11 — Agua industrial subterránea","presion_max":1241,"temp_max":40,"usa_pwht":false}'
+  '{"codigo":"C1","descripcion":"Acero carbono ASTM A106/A53 Gr B","presion_max":285,"temp_max":38,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"C2","descripcion":"Acero carbono ASTM A53 Gr B (liso)","presion_max":285,"temp_max":38,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"C3","descripcion":"Acero carbono + Neopreno interior (R3)","presion_max":285,"temp_max":38,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"C5","descripcion":"Acero carbono ASTM A53 Gr B (incendio)","presion_max":175,"temp_max":40,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"C11","descripcion":"Acero carbono + Goma natural interior","presion_max":285,"temp_max":38,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"G1","descripcion":"Acero galvanizado ASTMA53","presion_max":285,"temp_max":38,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"H1","descripcion":"HDPE PE100 PN6","presion_max":90,"temp_max":20,"usa_pwht":false,"usa_pmi":false}',
+  '{"codigo":"H2","descripcion":"HDPE PE100 PN10","presion_max":145,"temp_max":20,"usa_pwht":false,"usa_pmi":false}'
 )::jsonb);
 
--- ── cat_diametros_nps (minería — estándar ASME, pulgadas) ─────
+-- 3. cat_diametros_nps (minería) — 22 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_diametros_nps', 'cat_diametros_nps', jsonb_build_array(
-  '{"nps":"1/2\"","nps_mm":15}',
-  '{"nps":"3/4\"","nps_mm":20}',
-  '{"nps":"1\"","nps_mm":25}',
-  '{"nps":"1 1/2\"","nps_mm":40}',
-  '{"nps":"2\"","nps_mm":50}',
-  '{"nps":"3\"","nps_mm":80}',
-  '{"nps":"4\"","nps_mm":100}',
-  '{"nps":"6\"","nps_mm":150}',
-  '{"nps":"8\"","nps_mm":200}',
-  '{"nps":"10\"","nps_mm":250}',
-  '{"nps":"12\"","nps_mm":300}',
-  '{"nps":"14\"","nps_mm":350}',
-  '{"nps":"16\"","nps_mm":400}',
-  '{"nps":"18\"","nps_mm":450}',
-  '{"nps":"20\"","nps_mm":500}',
-  '{"nps":"24\"","nps_mm":600}',
-  '{"nps":"30\"","nps_mm":750}',
-  '{"nps":"36\"","nps_mm":900}'
+  '{"nps":"3/4","nps_mm":19.05}',
+  '{"nps":"1","nps_mm":25.4}',
+  '{"nps":"1.1/4","nps_mm":31.75}',
+  '{"nps":"1.1/2","nps_mm":38.1}',
+  '{"nps":"2","nps_mm":50.8}',
+  '{"nps":"3","nps_mm":76.2}',
+  '{"nps":"4","nps_mm":101.6}',
+  '{"nps":"6","nps_mm":152.4}',
+  '{"nps":"8","nps_mm":203.2}',
+  '{"nps":"10","nps_mm":254.0}',
+  '{"nps":"12","nps_mm":304.8}',
+  '{"nps":"16","nps_mm":406.4}',
+  '{"nps":"18","nps_mm":457.2}',
+  '{"nps":"24","nps_mm":609.6}',
+  '{"nps":"50","nps_mm":50.0}',
+  '{"nps":"110","nps_mm":110.0}',
+  '{"nps":"160","nps_mm":160.0}',
+  '{"nps":"200","nps_mm":200.0}',
+  '{"nps":"250","nps_mm":250.0}',
+  '{"nps":"315","nps_mm":315.0}',
+  '{"nps":"400","nps_mm":400.0}',
+  '{"nps":"450","nps_mm":450.0}'
 )::jsonb);
 
--- ── cat_aislacion_ext (minería) ────────────────────────────────
+-- 4. cat_aislacion_ext (minería) — 4 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_aislacion_ext', 'cat_aislacion_ext', jsonb_build_array(
-  '{"codigo":"NA","descripcion":"Sin aislación"}',
-  '{"codigo":"TH","descripcion":"Aislación térmica — lana mineral"}',
-  '{"codigo":"TP","descripcion":"Aislación térmica — poliuretano"}',
-  '{"codigo":"PO","descripcion":"Protección personal (solo chaqueta)"}',
-  '{"codigo":"CR","descripcion":"Aislación criogénica — espuma celular"}'
+  '{"codigo":"N","descripcion":"Sin Aislación"}',
+  '{"codigo":"HC","descripcion":"Conservación de Calor"}',
+  '{"codigo":"PP","descripcion":"Protección Personal"}',
+  '{"codigo":"ET","descripcion":"Electrical Tracing"}'
 )::jsonb);
 
--- ── cat_revestimiento_int (minería) ────────────────────────────
-SELECT lukeapp.seed_plantilla('mineria', 'cat_revestimiento_int', 'cat_revestimiento_int', jsonb_build_array(
-  '{"codigo":"NA","descripcion":"Sin revestimiento"}',
-  '{"codigo":"GR","descripcion":"Goma natural — abrasivos gruesos"}',
-  '{"codigo":"GS","descripcion":"Goma sintética — abrasivos finos"}',
-  '{"codigo":"EP","descripcion":"Epoxi interior — fluidos corrosivos"}',
-  '{"codigo":"CE","descripcion":"Cerámica (azulejo) — alta abrasión"}'
-)::jsonb);
-
--- ── cat_esquema_pintura (minería) ──────────────────────────────
+-- 5. cat_esquema_pintura (minería) — 5 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_esquema_pintura', 'cat_esquema_pintura', jsonb_build_array(
-  '{"codigo":"EP1","descripcion":"Epoxi 2 capas — interior seco","capas":2}',
-  '{"codigo":"EP2","descripcion":"Epoxi 3 capas — exterior industrial","capas":3}',
-  '{"codigo":"PU1","descripcion":"Poliuretano — acabado exterior UV","capas":2}',
-  '{"codigo":"ZN1","descripcion":"Zinc inorgánico primer + epoxi — ambiente marino","capas":3}',
-  '{"codigo":"NA","descripcion":"Sin pintura (acero inox / HDPE / FRP)","capas":0}'
+  '{"codigo":"EPC-9","descripcion":"Acero Superficial (Cordillerano)","capas":4,"espesor_total_um":275}',
+  '{"codigo":"TRICAPA","descripcion":"Acero Enterrado (FBE)","capas":3,"espesor_total_um":2125}',
+  '{"codigo":"C209","descripcion":"Acero Enterrado (Cintas)","capas":2,"espesor_total_um":0}',
+  '{"codigo":"C210","descripcion":"Acero Enterrado (Líquido)","capas":0,"espesor_total_um":0}',
+  '{"codigo":"N/A","descripcion":"Sin Esquema Pintura","capas":0,"espesor_total_um":0}'
 )::jsonb);
 
--- ── cat_porcentaje_nde (minería) ───────────────────────────────
+-- 6. cat_porcentaje_nde (minería) — 5 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_porcentaje_nde', 'cat_porcentaje_nde', jsonb_build_array(
-  '{"codigo":"NDE0","descripcion":"Sin NDE (juntas no inspeccionadas)","porcentaje":0}',
-  '{"codigo":"NDE5","descripcion":"5% — servicios no críticos","porcentaje":5}',
-  '{"codigo":"NDE10","descripcion":"10% — servicios de proceso","porcentaje":10}',
-  '{"codigo":"NDE20","descripcion":"20% — vapor / gas clase E","porcentaje":20}',
-  '{"codigo":"NDE100","descripcion":"100% — PWHT obligatorio / presión alta","porcentaje":100}'
+  '{"codigo":"VT","descripcion":"Inspección Visual","porcentaje":100}',
+  '{"codigo":"RT","descripcion":"Radiografía","porcentaje":100}',
+  '{"codigo":"PT","descripcion":"Líquidos Penetrantes","porcentaje":100}',
+  '{"codigo":"UT","descripcion":"Ultrasonido","porcentaje":100}',
+  '{"codigo":"DT","descripcion":"Ensayo Destructivo Aleatorio","porcentaje":5}'
 )::jsonb);
 
--- ── cat_tipo_prueba (minería) ──────────────────────────────────
+-- 7. cat_revestimiento_int (minería) — 4 registros
+SELECT lukeapp.seed_plantilla('mineria', 'cat_revestimiento_int', 'cat_revestimiento_int', jsonb_build_array(
+  '{"codigo":"N","descripcion":"Sin Revestimiento Interior"}',
+  '{"codigo":"R1","descripcion":"Rubber Lined (6mm)"}',
+  '{"codigo":"R2","descripcion":"Rubber Lined (12mm)"}',
+  '{"codigo":"R3","descripcion":"Poliuretano (15mm)"}'
+)::jsonb);
+
+-- 8. cat_tipo_prueba (minería) — 3 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_tipo_prueba', 'cat_tipo_prueba', jsonb_build_array(
-  '{"codigo":"HID","descripcion":"Prueba hidrostática (1.5x presión diseño)"}',
-  '{"codigo":"NEU","descripcion":"Prueba neumática (1.1x — servicios sensibles a agua)"}',
-  '{"codigo":"FUG","descripcion":"Prueba de fuga (servicio)"}',
-  '{"codigo":"NA","descripcion":"Sin prueba de presión requerida"}'
+  '{"codigo":"Hidrostatica","descripcion":"Prueba hidrostática acero"}',
+  '{"codigo":"Hidrostatica HDPE","descripcion":"Prueba hidrostática plásticos"}',
+  '{"codigo":"Neumática","descripcion":"Prueba neumática gas"}'
 )::jsonb);
 
--- ── cat_tipo_soporte (minería) ─────────────────────────────────
+-- 9. cat_tipo_soporte (minería) — 9 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_tipo_soporte', 'cat_tipo_soporte', jsonb_build_array(
-  '{"codigo":"SOP","descripcion":"Soporte simple (carga gravitacional)"}',
-  '{"codigo":"GIA","descripcion":"Guía axial"}',
-  '{"codigo":"GIL","descripcion":"Guía lateral"}',
-  '{"codigo":"ANC","descripcion":"Anclaje (fijo)"}',
-  '{"codigo":"RES","descripcion":"Resorte (carga variable)"}',
-  '{"codigo":"COL","descripcion":"Colgante (hanger)"}',
-  '{"codigo":"ESP","descripcion":"Soporte especial (diseño específico)"}'
+  '{"codigo":"ES-02","descripcion":"SOPORTE TRUNNION"}',
+  '{"codigo":"MS-06","descripcion":"MARCO SOPORTE TIPO \"L\""}',
+  '{"codigo":"PU-01","descripcion":"PERNO U LARGO"}',
+  '{"codigo":"SA-10","descripcion":"ABRAZADERA ESTANDAR"}',
+  '{"codigo":"SE-01","descripcion":"SOPORTE ESCUADRA"}',
+  '{"codigo":"SL-01","descripcion":"ANGULO ANCLAJE LATERAL"}',
+  '{"codigo":"SL-02","descripcion":"ANGULO ANCLAJE LATERAL"}',
+  '{"codigo":"SP-05","descripcion":"SOPORTE PUNTUAL APOYO CAÑERIAS"}',
+  '{"codigo":"ST-01","descripcion":"TRAPECIO ANGULO TIPO A"}'
 )::jsonb);
 
--- ── cat_tipo_union (minería) ───────────────────────────────────
+-- 10. cat_tipo_union (minería) — 10 registros
 SELECT lukeapp.seed_plantilla('mineria', 'cat_tipo_union', 'cat_tipo_union', jsonb_build_array(
-  '{"codigo":"BW","descripcion":"Soldadura a tope (Butt Weld)"}',
-  '{"codigo":"SW","descripcion":"Soldadura en socket (Socket Weld)"}',
-  '{"codigo":"TH","descripcion":"Roscada (Threaded)"}',
-  '{"codigo":"FL","descripcion":"Bridada (Flanged)"}',
-  '{"codigo":"CA","descripcion":"Victaulic / Acoplamiento ranurado"}',
-  '{"codigo":"GL","descripcion":"Pegada (Glued — HDPE/FRP)"}',
-  '{"codigo":"ER","descripcion":"Electrofusión (HDPE)"}'
+  '{"codigo":"BW","descripcion":"Butt Weld"}',
+  '{"codigo":"SW","descripcion":"Socket Weld"}',
+  '{"codigo":"THD","descripcion":"Threaded"}',
+  '{"codigo":"VIC","descripcion":"Grooved"}',
+  '{"codigo":"TF","descripcion":"Butt Fusion"}',
+  '{"codigo":"BT","descripcion":"Flanged"}',
+  '{"codigo":"SO","descripcion":"Slip On"}',
+  '{"codigo":"LET","descripcion":"Fillet Weld"}',
+  '{"codigo":"TW","descripcion":"TACK WELD"}',
+  '{"codigo":"BRW","descripcion":"Branch Weld"}'
 )::jsonb);
 
+
 -- ============================================================
--- ██████████████  REFINERÍA  ██████████████
--- Plantilla base — marcada como borrador (validar con OT)
--- Característica: aleaciones Cr-Mo para alta temp + PWHT + PMI
+-- ██████████████  REFINERÍA (BASE BORRADOR)  ██████████████
 -- ============================================================
 
--- ── cat_fluido_servicio (refinería) ───────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_fluido_servicio', 'cat_fluido_servicio', jsonb_build_array(
   '{"codigo":"CV","descripcion":"Crudo / Vacío","borrador":true}',
   '{"codigo":"GS","descripcion":"Gas de proceso","borrador":true}',
@@ -182,7 +181,6 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_fluido_servicio', 'cat_fluido_se
   '{"codigo":"DR","descripcion":"Drenaje / efluente","borrador":true}'
 )::jsonb);
 
--- ── cat_clase_piping (refinería) ───────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_clase_piping', 'cat_clase_piping', jsonb_build_array(
   '{"codigo":"A1R","descripcion":"CS A106-B Sch40 300# — servicios no corrosivos <200°C","presion_max":5172,"temp_max":200,"usa_pwht":false,"usa_pmi":false,"borrador":true}',
   '{"codigo":"B1R","descripcion":"1.25Cr-0.5Mo P11 Sch80 600# — alta temperatura","presion_max":10342,"temp_max":540,"usa_pwht":true,"usa_pmi":true,"borrador":true}',
@@ -192,7 +190,6 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_clase_piping', 'cat_clase_piping
   '{"codigo":"E1R","descripcion":"Duplex 2205 — alta corrosión + erosión","presion_max":8620,"temp_max":280,"usa_pwht":false,"usa_pmi":true,"borrador":true}'
 )::jsonb);
 
--- ── cat_diametros_nps (refinería — igual estándar ASME) ────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_diametros_nps', 'cat_diametros_nps', jsonb_build_array(
   '{"nps":"1/2\"","nps_mm":15}',
   '{"nps":"3/4\"","nps_mm":20}',
@@ -212,7 +209,6 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_diametros_nps', 'cat_diametros_n
   '{"nps":"24\"","nps_mm":600}'
 )::jsonb);
 
--- ── cat_tipo_union (refinería) ─────────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_tipo_union', 'cat_tipo_union', jsonb_build_array(
   '{"codigo":"BW","descripcion":"Soldadura a tope (Butt Weld)","borrador":true}',
   '{"codigo":"SW","descripcion":"Soldadura en socket ≤NPS2 (Socket Weld)","borrador":true}',
@@ -220,7 +216,6 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_tipo_union', 'cat_tipo_union', j
   '{"codigo":"TH","descripcion":"Roscada ≤NPS1 (no en servicio H2)","borrador":true}'
 )::jsonb);
 
--- ── cat_porcentaje_nde (refinería) ─────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_porcentaje_nde', 'cat_porcentaje_nde', jsonb_build_array(
   '{"codigo":"NDE10","descripcion":"10% — servicios categoría D","porcentaje":10,"borrador":true}',
   '{"codigo":"NDE20","descripcion":"20% — categoría normal","porcentaje":20,"borrador":true}',
@@ -228,21 +223,18 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_porcentaje_nde', 'cat_porcentaje
   '{"codigo":"NDE100","descripcion":"100% — Cr-Mo + H2 + vapor alta presión","porcentaje":100,"borrador":true}'
 )::jsonb);
 
--- ── cat_tipo_prueba (refinería) ────────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_tipo_prueba', 'cat_tipo_prueba', jsonb_build_array(
   '{"codigo":"HID","descripcion":"Prueba hidrostática (ASME B31.3 §345.4)","borrador":true}',
   '{"codigo":"NEU","descripcion":"Prueba neumática (aprobación adicional requerida)","borrador":true}',
   '{"codigo":"SS","descripcion":"Leak test en servicio (categoría D)","borrador":true}'
 )::jsonb);
 
--- ── cat_esquema_pintura (refinería) ────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_esquema_pintura', 'cat_esquema_pintura', jsonb_build_array(
   '{"codigo":"ZN2","descripcion":"Zinc inorgánico + epoxi + poliuretano — exterior","capas":3,"borrador":true}',
   '{"codigo":"HT1","descripcion":"Pintura alta temperatura (silicona) ≤650°C — líneas vapor","capas":2,"borrador":true}',
   '{"codigo":"NA","descripcion":"Sin pintura (SS / Duplex / Cu-Ni)","capas":0,"borrador":true}'
 )::jsonb);
 
--- ── cat_aislacion_ext (refinería) ──────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_aislacion_ext', 'cat_aislacion_ext', jsonb_build_array(
   '{"codigo":"NA","descripcion":"Sin aislación","borrador":true}',
   '{"codigo":"LM","descripcion":"Lana mineral (calor > 100°C)","borrador":true}',
@@ -250,14 +242,12 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_aislacion_ext', 'cat_aislacion_e
   '{"codigo":"FR","descripcion":"Aislación refractaria — superficies > 600°C","borrador":true}'
 )::jsonb);
 
--- ── cat_revestimiento_int (refinería) ──────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_revestimiento_int', 'cat_revestimiento_int', jsonb_build_array(
   '{"codigo":"NA","descripcion":"Sin revestimiento","borrador":true}',
   '{"codigo":"EP","descripcion":"Epoxi — protección anticorrosiva interior","borrador":true}',
   '{"codigo":"GL","descripcion":"Vidrio fusionado — ácidos fuertes","borrador":true}'
 )::jsonb);
 
--- ── cat_tipo_soporte (refinería) ───────────────────────────────
 SELECT lukeapp.seed_plantilla('refineria', 'cat_tipo_soporte', 'cat_tipo_soporte', jsonb_build_array(
   '{"codigo":"SOP","descripcion":"Soporte simple","borrador":true}',
   '{"codigo":"ANC","descripcion":"Anclaje (fijo)","borrador":true}',
@@ -267,13 +257,11 @@ SELECT lukeapp.seed_plantilla('refineria', 'cat_tipo_soporte', 'cat_tipo_soporte
   '{"codigo":"ESP","descripcion":"Soporte especial (análisis de flexibilidad)","borrador":true}'
 )::jsonb);
 
+
 -- ============================================================
--- ██████████████  CELULOSA  ██████████████
--- Plantilla base — marcada como borrador (validar con OT)
--- Característica: inox 316L + dúplex + PMI obligatorio
+-- ██████████████  CELULOSA (BASE BORRADOR)  ██████████████
 -- ============================================================
 
--- ── cat_fluido_servicio (celulosa) ────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_fluido_servicio', 'cat_fluido_servicio', jsonb_build_array(
   '{"codigo":"LIC","descripcion":"Licor verde (digestión kraft)","borrador":true}',
   '{"codigo":"LIB","descripcion":"Licor blanco","borrador":true}',
@@ -287,7 +275,6 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_fluido_servicio', 'cat_fluido_ser
   '{"codigo":"DR","descripcion":"Drenaje / efluente","borrador":true}'
 )::jsonb);
 
--- ── cat_clase_piping (celulosa) ────────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_clase_piping', 'cat_clase_piping', jsonb_build_array(
   '{"codigo":"A1C","descripcion":"CS Sch40 150# — agua / drenaje no corrosivo","presion_max":1034,"temp_max":93,"usa_pwht":false,"usa_pmi":false,"borrador":true}',
   '{"codigo":"B1C","descripcion":"SS 316L Sch10S — licores / aguas de proceso","presion_max":1034,"temp_max":120,"usa_pwht":false,"usa_pmi":true,"borrador":true}',
@@ -297,7 +284,6 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_clase_piping', 'cat_clase_piping'
   '{"codigo":"E1C","descripcion":"HDPE SDR11 — efluentes / agua industrial","presion_max":1241,"temp_max":40,"usa_pwht":false,"usa_pmi":false,"borrador":true}'
 )::jsonb);
 
--- ── cat_diametros_nps (celulosa) ───────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_diametros_nps', 'cat_diametros_nps', jsonb_build_array(
   '{"nps":"1/2\"","nps_mm":15}',
   '{"nps":"3/4\"","nps_mm":20}',
@@ -316,7 +302,6 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_diametros_nps', 'cat_diametros_np
   '{"nps":"24\"","nps_mm":600}'
 )::jsonb);
 
--- ── cat_tipo_union (celulosa) ─────────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_tipo_union', 'cat_tipo_union', jsonb_build_array(
   '{"codigo":"BW","descripcion":"Soldadura a tope — SS/Duplex (requiere PMI post-soldadura)","borrador":true}',
   '{"codigo":"FL","descripcion":"Bridada — grandes diámetros y mantenimiento","borrador":true}',
@@ -325,7 +310,6 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_tipo_union', 'cat_tipo_union', js
   '{"codigo":"TH","descripcion":"Roscada ≤NPS1 — servicios auxiliares no corrosivos","borrador":true}'
 )::jsonb);
 
--- ── cat_porcentaje_nde (celulosa) ─────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_porcentaje_nde', 'cat_porcentaje_nde', jsonb_build_array(
   '{"codigo":"NDE0","descripcion":"Sin NDE — HDPE/FRP","porcentaje":0,"borrador":true}',
   '{"codigo":"NDE10","descripcion":"10% — CS servicios auxiliares","porcentaje":10,"borrador":true}',
@@ -333,35 +317,30 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_porcentaje_nde', 'cat_porcentaje_
   '{"codigo":"NDE100","descripcion":"100% — Duplex / alta corrosividad / ASME B31.3 Cat M","porcentaje":100,"borrador":true}'
 )::jsonb);
 
--- ── cat_tipo_prueba (celulosa) ────────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_tipo_prueba', 'cat_tipo_prueba', jsonb_build_array(
   '{"codigo":"HID","descripcion":"Prueba hidrostática","borrador":true}',
   '{"codigo":"NEU","descripcion":"Prueba neumática (autorización especial)","borrador":true}',
   '{"codigo":"FUG","descripcion":"Prueba de fuga — HDPE/FRP","borrador":true}'
 )::jsonb);
 
--- ── cat_esquema_pintura (celulosa) ────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_esquema_pintura', 'cat_esquema_pintura', jsonb_build_array(
   '{"codigo":"EP2","descripcion":"Epoxi 2 capas — exterior CS no corrosivo","capas":2,"borrador":true}',
   '{"codigo":"EP3","descripcion":"Epoxi 3 capas + poliuretano — ambiente húmedo industrial","capas":3,"borrador":true}',
   '{"codigo":"NA","descripcion":"Sin pintura — SS / Duplex / HDPE / FRP","capas":0,"borrador":true}'
 )::jsonb);
 
--- ── cat_aislacion_ext (celulosa) ──────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_aislacion_ext', 'cat_aislacion_ext', jsonb_build_array(
   '{"codigo":"NA","descripcion":"Sin aislación","borrador":true}',
   '{"codigo":"LM","descripcion":"Lana mineral — tuberías de vapor > 80°C","borrador":true}',
   '{"codigo":"CA","descripcion":"Aislación con tracing eléctrico — licores cristalizables","borrador":true}'
 )::jsonb);
 
--- ── cat_revestimiento_int (celulosa) ──────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_revestimiento_int', 'cat_revestimiento_int', jsonb_build_array(
   '{"codigo":"NA","descripcion":"Sin revestimiento — SS/Duplex","borrador":true}',
   '{"codigo":"GR","descripcion":"Goma natural — pulpa de madera / abrasivos","borrador":true}',
   '{"codigo":"EP","descripcion":"Epoxi interior — CS con fluidos corrosivos","borrador":true}'
 )::jsonb);
 
--- ── cat_tipo_soporte (celulosa) ────────────────────────────────
 SELECT lukeapp.seed_plantilla('celulosa', 'cat_tipo_soporte', 'cat_tipo_soporte', jsonb_build_array(
   '{"codigo":"SOP","descripcion":"Soporte simple","borrador":true}',
   '{"codigo":"ANC","descripcion":"Anclaje (fijo)","borrador":true}',
@@ -370,15 +349,14 @@ SELECT lukeapp.seed_plantilla('celulosa', 'cat_tipo_soporte', 'cat_tipo_soporte'
   '{"codigo":"ESP","descripcion":"Soporte especial","borrador":true}'
 )::jsonb);
 
--- ─── Limpiar función helper (no la dejar en schema) ──────────
+
+-- ─── Limpiar función helper (no dejar en el schema) ─────────
 DROP FUNCTION IF EXISTS lukeapp.seed_plantilla(lukeapp.industria_tipo, TEXT, TEXT, JSONB, INT);
 
--- ─── Reporte de lo insertado ──────────────────────────────────
+-- ─── Reporte final simplificado para verificar conteos ──────
 SELECT
   industria,
   tabla,
-  count(*) as n_plantillas,
-  jsonb_array_length(payload) as n_registros
+  jsonb_array_length(payload) as total_elementos
 FROM lukeapp.plantillas_catalogo
-GROUP BY industria, tabla
 ORDER BY industria, tabla;
