@@ -1,7 +1,8 @@
 # LukeAPP v4 — Instrucciones de desarrollo (roadmap completo)
 
 > Para el agente/desarrollador en Antigravity. Leer primero `AGENTS.md` (reglas inviolables).
-> Estado: marcar `[x]` al completar cada tarea. Rev. A — Julio 2026.
+> Estado: marcar `[x]` al completar cada tarea. **Rev. B — Julio 2026**.
+> Rev. B (2026-07-13): `apps/oficina` → `apps/dashboard`; rol GERENCIA + `acceso_global` en usuarios (migr. 003); bucket Storage `evidencias` privado (regla inviolable). Ver `AGENTS.md` para detalles.
 
 ## 0. Contexto
 
