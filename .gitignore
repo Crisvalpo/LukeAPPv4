@@ -1,6 +1,9 @@
 # === Dependencias ===
 node_modules/
 .pnpm-store/
+# El monorepo usa pnpm; un package-lock.json generado aquí apunta al store
+# de pnpm y rompe npm install en el server (el deploy usa npm standalone)
+package-lock.json
 
 # === Build outputs ===
 dist/
