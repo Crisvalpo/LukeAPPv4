@@ -1,0 +1,27 @@
+# LukeAPP v4 — ETL Migración 413
+# Dependencias Python para el importador y migración v1 → v4
+
+# Lectura y escritura de Excel
+openpyxl>=3.1.2
+pandas>=2.2.2
+
+# Conexión a PostgreSQL (self-hosted Supabase)
+psycopg2-binary>=2.9.9
+
+# Variables de entorno
+python-dotenv>=1.0.1
+
+# HTTP (Supabase REST / Storage)
+httpx>=0.27.0
+
+# Validación de datos
+pydantic>=2.8.0
+
+# CLI
+click>=8.1.7
+
+# Hash de archivos
+xxhash>=3.4.1
+
+# Utilidades de fechas
+python-dateutil>=2.9.0

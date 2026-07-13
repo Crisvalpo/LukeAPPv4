@@ -1,0 +1,13 @@
+# Normalizar line endings: LF en repo, conversión automática en checkout Windows
+* text=auto eol=lf
+
+# SQL siempre LF (crítico para aplicar en Linux/lukeserver)
+*.sql text eol=lf
+
+# Binarios: no tocar
+*.docx binary
+*.xlsx binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.wasm binary

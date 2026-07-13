@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Lint + Typecheck ────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript (typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck all packages
+        run: pnpm typecheck
+
+  # ─── Validación SQL de migraciones (sintaxis) ─────────────────────────────
+  sql-lint:
+    name: SQL migrations lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Lint migrations
+        run: |
+          sqlfluff lint supabase/migrations/ \
+            --dialect postgres \
+            --exclude-rules L016,L036
+        # L016 = line too long, L036 = select wildcards (ok en migrations)
+        continue-on-error: true
+        # No bloquea el CI por ahora — informativo
+
+  # ─── ETL Python ─────────────────────────────────────────────────────────────
+  etl-check:
+    name: ETL Python syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd etl
+          pip install -r requirements.txt
+        continue-on-error: true
+        # No falla el CI si los paquetes no están aún

@@ -1,0 +1,44 @@
+# === Dependencias ===
+node_modules/
+.pnpm-store/
+
+# === Build outputs ===
+dist/
+build/
+.next/
+out/
+
+# === Entorno ===
+.env
+.env.local
+.env.production
+.env.development
+# Mantener .env.example en git
+
+# === Supabase local (si se usa CLI local) ===
+.supabase/
+
+# === Python ETL ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+etl/.venv/
+
+# === IDE ===
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Logs ===
+*.log
+logs/
+
+# === TypeScript ===
+*.tsbuildinfo

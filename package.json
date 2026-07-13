@@ -1,0 +1,21 @@
+{
+  "name": "lukeapp-v4",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LukeAPP v4 — Plataforma multi-proyecto de trazabilidad de montaje industrial (piping y mecánica)",
+  "scripts": {
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "dev:terreno": "pnpm --filter @lukeapp/terreno dev",
+    "dev:dashboard": "pnpm --filter @lukeapp/dashboard dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}
