@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../supabaseClient';
 import { sanitizarNombreArchivo } from '../../lib/storagePath';
@@ -63,7 +63,7 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoCanonico[]> = {
     { campo: 'numero_junta', label: 'N° Junta', requerido: true, alias: ['numero_junta', 'numerojunta', 'junta', 'juntano', 'jointno', 'joint_no', 'n union', 'nº union'] },
     { campo: 'tipo_union', label: 'Tipo Unión (código)', alias: ['tipo_union', 'tipounion', 'tipo', 'jointtype', 'weldtype', 'tipo union ', 'tipo union'] },
     { campo: 'nps_texto', label: 'NPS / Diámetro', alias: ['nps', 'diametro', 'size'] },
-    { campo: 'proceso_soldadura', label: 'Proceso Soldadura', alias: ['proceso', 'procesosoldadura', 'wps', 'process', 'proceso'] },
+    { campo: 'proceso_soldadura', label: 'Proceso Soldadura', alias: ['proceso', 'procesosoldadura', 'wps', 'process'] },
     { campo: 'material_base', label: 'Material Base', alias: ['material_base', 'materialbase', 'matbase', 'material'] },
     { campo: 'requiere_pwht', label: 'Req. PWHT', alias: ['requiere_pwht', 'reqpwht', 'pwht'] },
     { campo: 'requiere_pmi', label: 'Req. PMI', alias: ['requiere_pmi', 'reqpmi', 'pmi'] },
@@ -71,7 +71,6 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoCanonico[]> = {
   ],
 };
 
-// Columnas específicas del piloto para generación de plantillas
 const COLUMNAS_REALES: Record<TablaDestino, string[]> = {
   list_lineas: ['ID_LINEA', 'CLASE', 'NPS', 'SERVICIO', 'TIPO MATERIAL', 'PLANO_CODELCO', 'MTS', 'FROM', 'TO', 'TEMP_DISEÑO_C', 'PRESION_DISEÑO_KG', 'TIPO PRUEBA', 'ESQUEMA', 'RAL', 'REVESTIMIENTO INTERIOR', 'AISLACION', 'OBSERVACIONES'],
   list_mto: ['ID_MTO', 'TABLACUB', 'ITEM', 'EWP', 'CWP', 'CWA', 'PWP', 'ID_LINEA', 'ID_ISO', 'ID_SPOOL', 'CLASE', 'DESCRIPCION', 'DIAM.', 'CANTIDAD', 'UNIDAD', 'REVISADO', 'PESO_TOTAL', 'UNIDAD2', 'SUMINISTRO', 'GRUPO', 'PROVEEDOR', 'ORDEN_COMPRA', 'ETA_OBRA', 'RECEPCIONADO', 'SOLICITADO', 'DESPACHADO', 'USUARIO_COMPRA', 'REVISION_MAT', 'PRIORIDAD_FAB', 'CANT_REAL', 'UBICACION_ACTUAL', 'FECHA_CONTROL', 'OBSERV.'],
@@ -124,6 +123,13 @@ interface ConnectionState {
   status: 'Conectado' | 'Pendiente' | 'Sincronizando';
 }
 
+interface TablaProcesada {
+  loteId: string;
+  estado: string;
+  resumen: LoteResumen;
+  filas: FilaImport[];
+}
+
 interface CubicadorImportProps {
   proyectoId: string;
 }
@@ -157,14 +163,29 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   const [tablaDestino, setTablaDestino] = useState<TablaDestino>('list_lineas');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [procesando, setProcesando] = useState(false);
+  const [progresoSync, setProgresoSync] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
-  const [loteId, setLoteId] = useState<string | null>(null);
-  const [estadoLote, setEstadoLote] = useState<string | null>(null);
-  const [resumen, setResumen] = useState<LoteResumen | null>(null);
-  const [filas, setFilas] = useState<FilaImport[]>([]);
+  // Estados de datos de múltiples tablas procesadas
+  const [tablasProcesadas, setTablasProcesadas] = useState<Record<TablaDestino, TablaProcesada | null>>({
+    list_lineas: null,
+    list_mto: null,
+    list_isos: null,
+    list_spools: null,
+    list_juntas: null
+  });
+
+  // Fila seleccionada por tabla
+  const [seleccionadas, setSeleccionadas] = useState<Record<TablaDestino, string | null>>({
+    list_lineas: null,
+    list_mto: null,
+    list_isos: null,
+    list_spools: null,
+    list_juntas: null
+  });
+
   const [filtroAccion, setFiltroAccion] = useState<Accion | 'todas'>('todas');
-  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [aplicando, setAplicando] = useState(false);
 
   // Estados de conexión locales (SharePoint mock persistente en localStorage)
@@ -176,7 +197,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
     list_juntas: { lastSync: null, status: 'Pendiente' }
   });
 
-  const baseFolder = "C:\\Users\\CristianLukeCabello\\EISA\\EIMI00413 - Andina - 2 - Espesador de Concentrado Colectivo PMFC - CODELCO - 2025\n\\1 - APP\\1_Tablas_MS\\LIST";
+  const baseFolder = "C:\\Users\\CristianLukeCabello\\EISA\\EIMI00413 - Andina - 2 - Espesador de Concentrado Colectivo PMFC - CODELCO - 2025\\1 - APP\\1_Tablas_MS\\LIST";
 
   useEffect(() => {
     const saved = localStorage.getItem(`sync_states_${proyectoId}`);
@@ -186,118 +207,184 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   }, [proyectoId]);
 
   const saveSyncState = (table: TablaDestino, state: ConnectionState) => {
-    const updated = { ...syncStates, [table]: state };
-    setSyncStates(updated);
-    localStorage.setItem(`sync_states_${proyectoId}`, JSON.stringify(updated));
+    setSyncStates((prev) => {
+      const updated = { ...prev, [table]: state };
+      localStorage.setItem(`sync_states_${proyectoId}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleDescargarPlantilla = (table: TablaDestino) => {
     const cols = COLUMNAS_REALES[table];
     const sheetName = SH_NAMES[table];
-    
-    // Crear datos con la primera fila conteniendo las columnas
     const data = [cols];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    
-    // Escribir y descargar
     XLSX.writeFile(wb, `${sheetName}_plantilla.xlsx`);
+  };
+
+  const processSingleSheet = async (
+    wb: XLSX.WorkBook,
+    tableKey: TablaDestino,
+    fileName: string,
+    hash: string,
+    storagePath: string
+  ): Promise<TablaProcesada | null> => {
+    const expectedSheet = SH_NAMES[tableKey];
+    const hoja = wb.Sheets[expectedSheet];
+    if (!hoja) {
+      console.warn(`Hoja '${expectedSheet}' no encontrada en el libro. Omitiendo.`);
+      return null;
+    }
+
+    const filasRaw: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: '' });
+    if (filasRaw.length < 2) {
+      console.warn(`La hoja '${expectedSheet}' no tiene filas de datos. Omitiendo.`);
+      return null;
+    }
+
+    const encabezados = (filasRaw[0] as string[]).map((h) => String(h ?? '').trim());
+    const datos = filasRaw.slice(1)
+      .filter((fila) => fila.some((c) => String(c ?? '').trim() !== ''))
+      .map((fila) => {
+        const obj: Record<string, unknown> = {};
+        encabezados.forEach((h, i) => { obj[h] = fila[i]; });
+        return obj;
+      });
+
+    const campos = CAMPOS_POR_TABLA[tableKey];
+    const mapeoCalculado: Record<string, string> = {};
+    for (const c of campos) {
+      const encontrado = encabezados.find((h) => c.alias.includes(normalizar(h)));
+      if (encontrado) {
+        mapeoCalculado[c.campo] = encontrado;
+      } else if (c.requerido) {
+        const directa = encabezados.find(h => normalizar(h) === normalizar(c.campo));
+        if (directa) mapeoCalculado[c.campo] = directa;
+      }
+    }
+
+    // Validar mapeo de campos requeridos
+    const faltantes = campos.filter(c => c.requerido && !mapeoCalculado[c.campo]);
+    if (faltantes.length > 0) {
+      throw new Error(`En la pestaña '${expectedSheet}', faltan columnas requeridas: ${faltantes.map(f => f.label).join(', ')}.`);
+    }
+
+    // Preparar payload
+    const filasPayload = datos.map((fila) => {
+      const payload: Record<string, string> = {};
+      for (const c of campos) {
+        const header = mapeoCalculado[c.campo];
+        const valor = header ? fila[header] : undefined;
+        payload[c.campo] = valor === undefined || valor === null ? '' : String(valor).trim();
+      }
+      
+      if (tableKey === 'list_juntas') {
+        payload['id_junta'] = `${payload['id_spool']}_${payload['numero_junta']}`;
+      }
+      return payload;
+    });
+
+    // Crear transacción de lote en base de datos
+    const { data: nuevoLoteId, error: errRpc } = await supabase.rpc('importar_crear_lote', {
+      p_proyecto_id: proyectoId,
+      p_tabla_destino: tableKey,
+      p_archivo_nombre: fileName,
+      p_hash_archivo: hash,
+      p_storage_path: storagePath,
+      p_mapeo: mapeoCalculado,
+      p_filas: filasPayload,
+    });
+    if (errRpc) throw errRpc;
+
+    // Cargar datos del lote creado
+    const { data: lote, error: errLote } = await supabase
+      .from('import_lotes').select('estado, resumen').eq('id', nuevoLoteId).single();
+    if (errLote) throw errLote;
+
+    const { data: filasData, error: errFilas } = await supabase
+      .from('import_filas').select('*').eq('lote_id', nuevoLoteId).order('nro_fila');
+    if (errFilas) throw errFilas;
+
+    return {
+      loteId: nuevoLoteId as string,
+      estado: lote.estado,
+      resumen: lote.resumen as LoteResumen,
+      filas: (filasData as FilaImport[]) ?? []
+    };
   };
 
   const handleArchivoSeleccionado = async (file: File) => {
     setError(null);
+    setAviso(null);
     setArchivo(file);
     setProcesando(true);
-    
+    setProgresoSync([]);
+
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      
-      const expectedSheet = SH_NAMES[tablaDestino];
-      let hoja = wb.Sheets[expectedSheet];
-      
-      // Fallback si no tiene el nombre exacto del piloto
-      if (!hoja) {
-        hoja = wb.Sheets[wb.SheetNames[0]];
-        console.warn(`Hoja '${expectedSheet}' no encontrada. Usando primera hoja: '${wb.SheetNames[0]}'`);
-      }
-      
-      const filasRaw: unknown[][] = XLSX.utils.sheet_to_json(hoja, { header: 1, raw: false, defval: '' });
-      if (filasRaw.length < 2) {
-        throw new Error('La planilla no tiene filas de datos.');
-      }
-      
-      const encabezados = (filasRaw[0] as string[]).map((h) => String(h ?? '').trim());
-      const datos = filasRaw.slice(1)
-        .filter((fila) => fila.some((c) => String(c ?? '').trim() !== ''))
-        .map((fila) => {
-          const obj: Record<string, unknown> = {};
-          encabezados.forEach((h, i) => { obj[h] = fila[i]; });
-          return obj;
-        });
-
-      // Auto-mapeo estricto basado en campos canónicos y alias del piloto
-      const campos = CAMPOS_POR_TABLA[tablaDestino];
-      const mapeoCalculado: Record<string, string> = {};
-      for (const c of campos) {
-        const encontrado = encabezados.find((h) => c.alias.includes(normalizar(h)));
-        if (encontrado) {
-          mapeoCalculado[c.campo] = encontrado;
-        } else if (c.requerido) {
-          // Intentar coincidencia directa insensible
-          const directa = encabezados.find(h => normalizar(h) === normalizar(c.campo));
-          if (directa) mapeoCalculado[c.campo] = directa;
-        }
-      }
-
-      // Validar mapeo de campos requeridos
-      const faltantes = campos.filter(c => c.requerido && !mapeoCalculado[c.campo]);
-      if (faltantes.length > 0) {
-        throw new Error(`Columnas requeridas no encontradas en el archivo: ${faltantes.map(f => f.label).join(', ')}. Por favor descarga la plantilla de referencia.`);
-      }
-
-      // Preparar payload
-      const filasPayload = datos.map((fila) => {
-        const payload: Record<string, string> = {};
-        for (const c of campos) {
-          const header = mapeoCalculado[c.campo];
-          const valor = header ? fila[header] : undefined;
-          payload[c.campo] = valor === undefined || valor === null ? '' : String(valor).trim();
-        }
-        
-        if (tablaDestino === 'list_juntas') {
-          payload['id_junta'] = `${payload['id_spool']}_${payload['numero_junta']}`;
-        }
-        return payload;
-      });
-
       const hash = await hashArchivo(buf);
-      const storagePath = `${proyectoId}/cubicador/${tablaDestino}/${Date.now()}_${sanitizarNombreArchivo(file.name)}`;
+      const storagePath = `${proyectoId}/cubicador/multi/${Date.now()}_${sanitizarNombreArchivo(file.name)}`;
 
-      // Guardar archivo original en bucket de auditoría
+      // Subir archivo completo para auditoría
+      setProgresoSync(prev => [...prev, 'Guardando archivo original en almacenamiento seguro…']);
       const { error: errUpload } = await supabase.storage.from('importaciones').upload(storagePath, file, {
         contentType: file.type || 'application/octet-stream',
       });
       if (errUpload) throw errUpload;
 
-      // Crear transacción de lote
-      const { data: nuevoLoteId, error: errRpc } = await supabase.rpc('importar_crear_lote', {
-        p_proyecto_id: proyectoId,
-        p_tabla_destino: tablaDestino,
-        p_archivo_nombre: file.name,
-        p_hash_archivo: hash,
-        p_storage_path: storagePath,
-        p_mapeo: mapeoCalculado,
-        p_filas: filasPayload,
-      });
-      if (errRpc) throw errRpc;
+      const wb = XLSX.read(buf, { type: 'array' });
+      const keys = Object.keys(CAMPOS_POR_TABLA) as TablaDestino[];
+      const tempTablasProcesadas: Record<TablaDestino, TablaProcesada | null> = {
+        list_lineas: null,
+        list_mto: null,
+        list_isos: null,
+        list_spools: null,
+        list_juntas: null
+      };
+      const tempSeleccionadas: Record<TablaDestino, string | null> = {
+        list_lineas: null,
+        list_mto: null,
+        list_isos: null,
+        list_spools: null,
+        list_juntas: null
+      };
 
-      setLoteId(nuevoLoteId as string);
-      await cargarLote(nuevoLoteId as string);
+      // Procesar cada hoja en paralelo
+      setProgresoSync(prev => [...prev, 'Extrayendo hojas y calculando diferencias en paralelo…']);
+      await Promise.all(
+        keys.map(async (key) => {
+          try {
+            const res = await processSingleSheet(wb, key, file.name, hash, storagePath);
+            if (res) {
+              tempTablasProcesadas[key] = res;
+              if (res.filas.length > 0) {
+                tempSeleccionadas[key] = res.filas[0].id;
+              }
+            }
+          } catch (e: any) {
+            console.error(`Error procesando pestaña ${SH_NAMES[key]}:`, e);
+            throw new Error(`Error en pestaña ${SH_NAMES[key]}: ${e.message}`);
+          }
+        })
+      );
+
+      // Verificar que se haya procesado al menos una tabla
+      const algunaProcesada = Object.values(tempTablasProcesadas).some((t) => t !== null);
+      if (!algunaProcesada) {
+        throw new Error('No se encontró ninguna de las hojas estándar del piloto en el archivo subido.');
+      }
+
+      setTablasProcesadas(tempTablasProcesadas);
+      setSeleccionadas(tempSeleccionadas);
+      
+      // Encontrar la primera tabla que se procesó con éxito
+      const primeraTabla = keys.find((key) => tempTablasProcesadas[key] !== null) || 'list_lineas';
+      setTablaDestino(primeraTabla);
       setFase('diff');
     } catch (e: any) {
-      setError(e.message || 'Error al procesar el archivo Excel.');
+      setError(e.message || 'Error al procesar el libro de trabajo.');
       setArchivo(null);
     } finally {
       setProcesando(false);
@@ -310,49 +397,119 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
     if (file) handleArchivoSeleccionado(file);
   };
 
-  const cargarLote = useCallback(async (id: string) => {
-    const { data: lote, error: errLote } = await supabase
-      .from('import_lotes').select('estado, resumen').eq('id', id).single();
-    if (errLote) { setError(errLote.message); return; }
-    setEstadoLote(lote.estado);
-    setResumen(lote.resumen as LoteResumen);
+  const handleAprobarFila = async (tableKey: TablaDestino, fila: FilaImport, aprobar: boolean) => {
+    const tableData = tablasProcesadas[tableKey];
+    if (!tableData) return;
 
-    const { data: filasData, error: errFilas } = await supabase
-      .from('import_filas').select('*').eq('lote_id', id).order('nro_fila');
-    if (errFilas) { setError(errFilas.message); return; }
-    setFilas((filasData as FilaImport[]) ?? []);
-    if ((filasData as FilaImport[])?.length) setSeleccionadaId((filasData as FilaImport[])[0].id);
-  }, []);
-
-  const handleAprobarFila = async (fila: FilaImport, aprobar: boolean) => {
-    if (!loteId) return;
     const { error: errAp } = await supabase.rpc('importar_aprobar_filas', {
-      p_lote_id: loteId,
+      p_lote_id: tableData.loteId,
       p_fila_ids: [fila.id],
       p_aprobada: aprobar,
     });
     if (errAp) { setError(errAp.message); return; }
-    setFilas((prev) => prev.map((f) => (f.id === fila.id ? { ...f, aprobada: aprobar } : f)));
+
+    setTablasProcesadas((prev) => {
+      const current = prev[tableKey];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [tableKey]: {
+          ...current,
+          filas: current.filas.map((f) => (f.id === fila.id ? { ...f, aprobada: aprobar } : f)),
+        },
+      };
+    });
   };
 
-  const handleAplicarLote = async () => {
-    if (!loteId) return;
+  // Sincronizar/Aplicar un lote individual
+  const handleAplicarLoteIndividual = async (tableKey: TablaDestino) => {
+    const tableData = tablasProcesadas[tableKey];
+    if (!tableData) return;
+
     setAplicando(true);
     setError(null);
+    setAviso(null);
     try {
-      const { data, error: errAplicar } = await supabase.rpc('importar_aplicar_lote', { p_lote_id: loteId });
+      const { data, error: errAplicar } = await supabase.rpc('importar_aplicar_lote', { p_lote_id: tableData.loteId });
       if (errAplicar) throw errAplicar;
-      setResumen(data as LoteResumen);
-      setEstadoLote('aplicado');
-      setFase('aplicado');
-      
-      // Registrar última sincronización exitosa
-      saveSyncState(tablaDestino, {
-        status: 'Conectado',
-        lastSync: new Date().toLocaleString('es-CL')
+
+      setTablasProcesadas((prev) => {
+        const current = prev[tableKey];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [tableKey]: {
+            ...current,
+            estado: 'aplicado',
+            resumen: data as LoteResumen,
+          },
+        };
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al aplicar los datos.');
+
+      saveSyncState(tableKey, {
+        status: 'Conectado',
+        lastSync: new Date().toLocaleString('es-CL'),
+      });
+      setAviso(`Sincronización de '${TAB_LABELS[tableKey]}' aplicada con éxito.`);
+    } catch (e: any) {
+      setError(e.message || 'Error al aplicar el lote.');
+    } finally {
+      setAplicando(false);
+    }
+  };
+
+  // Sincronizar TODOS los lotes procesados en serie
+  const handleAplicarTodosLosLotes = async () => {
+    setAplicando(true);
+    setError(null);
+    setAviso(null);
+
+    const keys = Object.keys(tablasProcesadas) as TablaDestino[];
+    const exitos: string[] = [];
+
+    try {
+      for (const key of keys) {
+        const tableData = tablasProcesadas[key];
+        if (!tableData || tableData.estado !== 'diff_listo') continue;
+
+        // Validar que no haya conflictos aprobados
+        const tieneConflictos = tableData.filas.some(f => f.aprobada && f.error_detalle?.startsWith('CONFLICTO'));
+        if (tieneConflictos) {
+          console.warn(`Omitiendo '${TAB_LABELS[key]}' debido a conflictos aprobados.`);
+          continue;
+        }
+
+        const { data, error: errAplicar } = await supabase.rpc('importar_aplicar_lote', { p_lote_id: tableData.loteId });
+        if (errAplicar) throw errAplicar;
+
+        setTablasProcesadas((prev) => {
+          const current = prev[key];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [key]: {
+              ...current,
+              estado: 'aplicado',
+              resumen: data as LoteResumen,
+            },
+          };
+        });
+
+        saveSyncState(key, {
+          status: 'Conectado',
+          lastSync: new Date().toLocaleString('es-CL'),
+        });
+        exitos.push(TAB_LABELS[key]);
+      }
+
+      if (exitos.length > 0) {
+        setAviso(`Sincronización masiva exitosa para: ${exitos.join(', ')}.`);
+        setFase('aplicado');
+      } else {
+        setError('No se aplicó ninguna tabla. Verifica que no haya conflictos aprobados bloqueantes.');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Error al aplicar sincronización masiva.');
     } finally {
       setAplicando(false);
     }
@@ -361,28 +518,53 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   const reiniciar = () => {
     setFase('conexiones');
     setArchivo(null);
-    setLoteId(null);
-    setEstadoLote(null);
-    setResumen(null);
-    setFilas([]);
-    setSeleccionadaId(null);
+    setTablasProcesadas({
+      list_lineas: null,
+      list_mto: null,
+      list_isos: null,
+      list_spools: null,
+      list_juntas: null
+    });
+    setSeleccionadas({
+      list_lineas: null,
+      list_mto: null,
+      list_isos: null,
+      list_spools: null,
+      list_juntas: null
+    });
     setError(null);
+    setAviso(null);
   };
 
-  // Simulación de sync directa para mock/demo
   const handleSimularSyncDirecta = () => {
     setProcesando(true);
     setError(null);
     setTimeout(() => {
       setProcesando(false);
-      setError('Simulación exitosa: Para procesar los datos reales, arrastra el archivo de tu OneDrive.');
+      setError('Simulación exitosa: Arrastra el archivo LIST_Piping_MS.xlsx para ver e integrar los cambios.');
     }, 1500);
   };
 
-  const filasFiltradas = filtroAccion === 'todas' ? filas : filas.filter((f) => f.accion === filtroAccion);
-  const seleccionada = filas.find((f) => f.id === seleccionadaId) ?? null;
-  const hayConflictoAprobado = filas.some((f) => f.aprobada && f.error_detalle?.startsWith('CONFLICTO'));
-  const hayPendientesAusentes = filas.some((f) => f.accion === 'ausente' && f.aprobada === false && !f.error_detalle?.startsWith('CONFLICTO'));
+  // Variables derivadas de la tabla activa
+  const activeData = tablasProcesadas[tablaDestino];
+  const currentEstadoLote = activeData?.estado ?? null;
+  const currentResumen = activeData?.resumen ?? null;
+  const currentFilas = activeData?.filas ?? [];
+  const currentSeleccionadaId = seleccionadas[tablaDestino];
+
+  const filasFiltradas = filtroAccion === 'todas'
+    ? currentFilas
+    : currentFilas.filter((f: FilaImport) => f.accion === filtroAccion);
+
+  const seleccionada = currentFilas.find((f: FilaImport) => f.id === currentSeleccionadaId) ?? null;
+  
+  const hayConflictoAprobado = currentFilas.some((f: FilaImport) => f.aprobada && f.error_detalle?.startsWith('CONFLICTO'));
+  const hayPendientesAusentes = currentFilas.some((f: FilaImport) => f.accion === 'ausente' && f.aprobada === false && !f.error_detalle?.startsWith('CONFLICTO'));
+
+  // Determinar si hay alguna tabla lista para aplicar
+  const algunaTablaLista = Object.values(tablasProcesadas).some(
+    (t) => t !== null && t.estado === 'diff_listo'
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 font-sans text-foreground">
@@ -406,25 +588,38 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
           ⚠️ {error}
         </div>
       )}
+      {aviso && (
+        <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-4 py-3 text-emerald-400 text-xs mb-6">
+          ✓ {aviso}
+        </div>
+      )}
 
       {/* FASE 1: TABLA DE CONEXIONES */}
       {fase === 'conexiones' && (
         <div className="flex flex-col gap-6">
           {/* Carpeta Sincronizada Info */}
           <Card className="bg-panel/20 border-border">
-            <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">📁</span>
+            <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">📁</span>
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">Carpeta de SharePoint Sincronizada</h4>
-                  <code className="text-[10px] text-accent block mt-1 break-all bg-background/50 p-1.5 rounded border border-border/40 font-mono">
+                  <code className="text-[10px] text-accent block mt-1 break-all bg-background/50 p-2 rounded border border-border/40 font-mono">
                     {baseFolder}
                   </code>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-semibold text-emerald-400">Canal Activo (Excel Online)</span>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <Button
+                  variant="primary"
+                  onClick={() => setFase('sync_modal')}
+                >
+                  🔄 Sincronizar Libro Completo
+                </Button>
+                <div className="flex items-center gap-2 justify-center bg-card/40 px-3 py-1.5 rounded border border-border/50 text-[10px] font-semibold text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Excel Online Activo
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -439,7 +634,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                   <th className="p-4">Hoja Origen</th>
                   <th className="p-4 w-32">Estado</th>
                   <th className="p-4 w-48">Última Sincronización</th>
-                  <th className="p-4 w-52 text-right">Acciones</th>
+                  <th className="p-4 w-36 text-right">Plantilla</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -464,21 +659,10 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                         </span>
                       </td>
                       <td className="p-4 text-muted/70 text-[11px]">{state.lastSync || 'Sin sincronizaciones'}</td>
-                      <td className="p-4 text-right flex justify-end gap-2">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => {
-                            setTablaDestino(tabKey);
-                            setFase('sync_modal');
-                          }}
-                        >
-                          Sincronizar
-                        </Button>
+                      <td className="p-4 text-right">
                         <Button
                           variant="outline"
                           size="sm"
-                          title="Descargar Plantilla Excel"
                           onClick={() => handleDescargarPlantilla(tabKey)}
                         >
                           ⇩ Plantilla
@@ -493,23 +677,23 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
         </div>
       )}
 
-      {/* FASE 2: DETALLE / SYNC MODAL */}
+      {/* FASE 2: SYNC MODAL (CARGA DEL LIBRO COMPLETO) */}
       {fase === 'sync_modal' && (
         <Card className="bg-panel/40 border-border max-w-xl mx-auto">
           <CardHeader>
             <CardTitle className="text-white text-base font-bold">
-              Sincronizar {TAB_LABELS[tablaDestino]}
+              Sincronizar Libro Excel de Piping
             </CardTitle>
             <p className="text-muted text-xs">
-              Conectando a SharePoint para actualizar los registros de forma automática.
+              Sube el libro de Piping para procesar las 5 hojas de control en paralelo.
             </p>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             <div className="bg-background/40 border border-border/60 rounded-xl p-4 flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-muted uppercase">Conexión SharePoint Sincronizada</span>
-              <div className="flex flex-col gap-1 text-xs text-foreground/80">
+              <span className="text-[10px] font-bold text-muted uppercase">Origen Sincronizado</span>
+              <div className="flex flex-col gap-1.5 text-xs text-foreground/80 leading-relaxed">
                 <div>• Archivo: <code className="text-accent font-mono">LIST_Piping_MS.xlsx</code></div>
-                <div>• Hoja: <code className="text-accent font-mono">{SH_NAMES[tablaDestino]}</code></div>
+                <div>• Hojas a sincronizar: <code className="text-accent font-mono">LIST_Lineas_MS_, LIST_MTO_MS, LIST_Isos_MS_, LIST_Spools_MS_, LIST_Juntas_MS_</code></div>
               </div>
             </div>
 
@@ -524,10 +708,10 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
             >
               <div className="text-3xl mb-2">🔄</div>
               <p className="text-sm font-semibold text-white text-center">
-                Arrastra el archivo Excel aquí para iniciar lectura
+                {procesando ? 'Procesando libro de trabajo…' : 'Arrastra LIST_Piping_MS.xlsx aquí'}
               </p>
-              <span className="text-[10px] text-muted text-center mt-1 max-w-xs leading-relaxed">
-                Selecciona el archivo de tu carpeta sincronizada de OneDrive. La app extraerá la pestaña <code className="text-white bg-card px-1 py-0.5 rounded font-mono">{SH_NAMES[tablaDestino]}</code> automáticamente.
+              <span className="text-[10px] text-muted text-center mt-1.5 max-w-xs leading-relaxed">
+                Selecciona el archivo de tu carpeta sincronizada de OneDrive. La app extraerá y procesará las 5 hojas de control en paralelo.
               </span>
               <input
                 id="cub-file-input"
@@ -538,6 +722,20 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
               />
             </div>
 
+            {procesando && progresoSync.length > 0 && (
+              <div className="bg-card border border-border p-3.5 rounded-lg flex flex-col gap-1.5">
+                <span className="text-[9px] font-bold text-muted uppercase">Progreso de Sincronización:</span>
+                <div className="flex flex-col gap-1 text-[10px] font-mono text-accent">
+                  {progresoSync.map((p, idx) => (
+                    <div key={idx} className="flex gap-1.5 items-center">
+                      <span className="animate-pulse">⌛</span>
+                      <span>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center border-t border-border/40 pt-4">
               <Button variant="ghost" onClick={reiniciar}>
                 Cancelar
@@ -547,26 +745,58 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                 disabled={procesando}
                 onClick={handleSimularSyncDirecta}
               >
-                {procesando ? 'Conectando…' : 'Simular Sync SharePoint'}
+                Simular Conexión Directa
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* FASE 3: DIFF Y APROBACIÓN */}
+      {/* FASE 3: DIFF Y APROBACIÓN MULTI-TABLA */}
       {(fase === 'diff' || fase === 'aplicado') && (
         <div className="flex flex-col gap-6">
+          {/* Selector de Tabla Activa */}
+          <div className="bg-panel/40 border border-border p-1 rounded-lg flex gap-1 flex-wrap w-full">
+            {(Object.keys(tablasProcesadas) as TablaDestino[]).map((tabKey) => {
+              const data = tablasProcesadas[tabKey];
+              if (!data) return null;
+              
+              const totalCambios = (data.resumen?.n_nuevas || 0) + (data.resumen?.n_modificadas || 0) + (data.resumen?.n_ausentes || 0);
+              
+              return (
+                <button
+                  key={tabKey}
+                  onClick={() => {
+                    setTablaDestino(tabKey);
+                    setFiltroAccion('todas');
+                  }}
+                  className={`flex-1 text-center py-2 px-3 rounded-md text-xs font-semibold tracking-wide transition-all min-w-[120px] ${
+                    tablaDestino === tabKey
+                      ? 'bg-accent text-white shadow'
+                      : 'text-muted hover:text-white hover:bg-panel/10'
+                  }`}
+                >
+                  {TAB_LABELS[tabKey]} {totalCambios > 0 && (
+                    <span className="ml-1 bg-accent-light/20 text-accent font-bold px-1.5 py-0.5 rounded text-[10px]">
+                      +{totalCambios}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Resumen de Cambios de la Tabla Activa */}
           <div className="bg-panel/20 p-4 border border-border rounded-xl flex items-center justify-between flex-wrap gap-4">
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Resumen de Diferencias: {TAB_LABELS[tablaDestino]}
+                Diferencias en: {TAB_LABELS[tablaDestino]}
               </h3>
-              <p className="text-muted text-[10px] mt-0.5">Archivo: {archivo?.name}</p>
+              <p className="text-muted text-[10px] mt-0.5">Archivo: {archivo?.name} · Hoja: {SH_NAMES[tablaDestino]}</p>
             </div>
             <div className="flex gap-2 flex-wrap">
               {(['nueva', 'modificada', 'ausente', 'sin_cambio', 'error'] as Accion[]).map((a) => {
-                const n = resumen?.[RESUMEN_KEY[a]] ?? filas.filter((f) => f.accion === a).length;
+                const n = currentResumen?.[RESUMEN_KEY[a]] ?? currentFilas.filter((f: FilaImport) => f.accion === a).length;
                 return (
                   <button
                     key={a}
@@ -581,9 +811,9 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                   </button>
                 );
               })}
-              {resumen?.n_conflictos ? (
+              {currentResumen?.n_conflictos ? (
                 <span className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 rounded-full text-[10px] font-bold">
-                  ⚠️ {resumen.n_conflictos} conflicto(s)
+                  ⚠️ {currentResumen.n_conflictos} conflicto(s)
                 </span>
               ) : null}
             </div>
@@ -594,49 +824,55 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
             <div className="lg:col-span-5 flex flex-col gap-3">
               <div className="flex justify-between items-center text-xs text-muted px-1">
                 <span>Filas ({filasFiltradas.length})</span>
-                {fase === 'diff' && (
+                {fase === 'diff' && currentEstadoLote === 'diff_listo' && (
                   <span className="text-[10px]">Aprueba/Rechaza ítems individuales</span>
                 )}
               </div>
               <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1">
-                {filasFiltradas.map((f) => (
-                  <div
-                    key={f.id}
-                    className={`border rounded-lg p-3 cursor-pointer transition-all hover:bg-panel/25 ${
-                      f.id === seleccionadaId ? 'border-accent bg-panel/30' : 'border-border/60 bg-panel/10'
-                    } ${
-                      f.aprobada === true ? 'border-l-4 border-l-emerald-500' :
-                      f.aprobada === false && f.accion !== 'sin_cambio' ? 'border-l-4 border-l-red-500' : ''
-                    }`}
-                    onClick={() => setSeleccionadaId(f.id)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`text-[10px] font-extrabold uppercase ${ACCION_META[f.accion ?? 'sin_cambio'].text}`}>
-                        {ACCION_META[f.accion ?? 'sin_cambio'].label}
-                      </span>
-                      <span className="text-[10px] text-muted font-mono">Fila {Math.abs(f.nro_fila)}</span>
-                    </div>
-                    <div className="text-xs text-white font-semibold truncate mb-2">
-                      Clave: {f.clave_natural || '—'}
-                    </div>
-                    {fase === 'diff' && (f.accion === 'nueva' || f.accion === 'modificada' || f.accion === 'ausente') && !f.error_detalle?.startsWith('CONFLICTO') && (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[9px] font-extrabold px-2.5 py-1 rounded"
-                          onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, true); }}
-                        >
-                          Aprobar
-                        </button>
-                        <button
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-extrabold px-2.5 py-1 rounded"
-                          onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, false); }}
-                        >
-                          Rechazar
-                        </button>
-                      </div>
-                    )}
+                {filasFiltradas.length === 0 ? (
+                  <div className="border border-border/40 bg-panel/5 rounded-lg p-8 text-center text-muted text-xs">
+                    No hay cambios en esta categoría.
                   </div>
-                ))}
+                ) : (
+                  filasFiltradas.map((f: FilaImport) => (
+                    <div
+                      key={f.id}
+                      className={`border rounded-lg p-3 cursor-pointer transition-all hover:bg-panel/25 ${
+                        f.id === currentSeleccionadaId ? 'border-accent bg-panel/30' : 'border-border/60 bg-panel/10'
+                      } ${
+                        f.aprobada === true ? 'border-l-4 border-l-emerald-500' :
+                        f.aprobada === false && f.accion !== 'sin_cambio' ? 'border-l-4 border-l-red-500' : ''
+                      }`}
+                      onClick={() => setSeleccionadas(prev => ({ ...prev, [tablaDestino]: f.id }))}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[10px] font-extrabold uppercase ${ACCION_META[(f.accion || 'sin_cambio') as Accion].text}`}>
+                          {ACCION_META[(f.accion || 'sin_cambio') as Accion].label}
+                        </span>
+                        <span className="text-[10px] text-muted font-mono">Fila {Math.abs(f.nro_fila)}</span>
+                      </div>
+                      <div className="text-xs text-white font-semibold truncate mb-2">
+                        Clave: {f.clave_natural || '—'}
+                      </div>
+                      {fase === 'diff' && currentEstadoLote === 'diff_listo' && (f.accion === 'nueva' || f.accion === 'modificada' || f.accion === 'ausente') && !f.error_detalle?.startsWith('CONFLICTO') && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[9px] font-extrabold px-2.5 py-1 rounded"
+                            onClick={(e) => { e.stopPropagation(); handleAprobarFila(tablaDestino, f, true); }}
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-extrabold px-2.5 py-1 rounded"
+                            onClick={(e) => { e.stopPropagation(); handleAprobarFila(tablaDestino, f, false); }}
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -656,7 +892,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                       seleccionada.accion === 'modificada' ? 'bg-amber-500/10 text-amber-400' :
                       'bg-red-500/10 text-red-400'
                     }`}>
-                      {ACCION_META[seleccionada.accion ?? 'sin_cambio'].label}
+                      {ACCION_META[(seleccionada.accion || 'sin_cambio') as Accion].label}
                     </span>
                   </div>
 
@@ -683,7 +919,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                          {Object.entries(seleccionada.diff).map(([campo, v]) => (
+                          {Object.entries(seleccionada.diff).map(([campo, v]: [string, any]) => (
                             <tr key={campo} className="hover:bg-panel/5">
                               <td className="p-3 font-semibold text-white">{campo}</td>
                               <td className="p-3 text-red-400/90 line-through font-mono">{v.antes ?? '—'}</td>
@@ -711,31 +947,43 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
             </div>
           </div>
 
-          {/* Footer del Lote */}
+          {/* Footer del Lote / Acciones */}
           <div className="bg-panel/40 border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4">
             <div className="text-xs text-muted flex flex-col gap-1">
-              <div>Estado de transacción: <strong className="text-white uppercase font-mono">{estadoLote}</strong></div>
+              <div>Estado de tabla activa ({TAB_LABELS[tablaDestino]}): <strong className="text-white uppercase font-mono">{currentEstadoLote}</strong></div>
               {hayConflictoAprobado && (
-                <span className="text-red-400 font-medium">✕ Hay conflictos aprobados pendientes. Resuélvelos para poder aplicar.</span>
+                <span className="text-red-400 font-medium">✕ Hay conflictos aprobados pendientes en esta tabla.</span>
               )}
               {hayPendientesAusentes && (
-                <span className="text-amber-400 font-medium">⚠ Hay ítems ausentes pendientes de aprobación/rechazo.</span>
+                <span className="text-amber-400 font-medium">⚠ Hay ítems ausentes pendientes de decisión en esta tabla.</span>
               )}
             </div>
 
-            {fase === 'diff' ? (
-              <Button
-                variant="primary"
-                disabled={aplicando || estadoLote !== 'diff_listo' || hayConflictoAprobado}
-                onClick={handleAplicarLote}
-              >
-                {aplicando ? 'Aplicando transacciones…' : 'Confirmar y Sincronizar en BD'}
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={reiniciar}>
-                Sincronización Aplicada Correctamente
-              </Button>
-            )}
+            <div className="flex gap-2 flex-wrap items-center">
+              {fase === 'diff' && (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={aplicando || currentEstadoLote !== 'diff_listo' || hayConflictoAprobado}
+                    onClick={() => handleAplicarLoteIndividual(tablaDestino)}
+                  >
+                    Aplicar Solo esta Tabla
+                  </Button>
+                  <Button
+                    variant="primary"
+                    disabled={aplicando || !algunaTablaLista}
+                    onClick={handleAplicarTodosLosLotes}
+                  >
+                    {aplicando ? 'Sincronizando Todo…' : 'Sincronizar Todas las Tablas'}
+                  </Button>
+                </>
+              )}
+              {fase === 'aplicado' && (
+                <Button variant="primary" onClick={reiniciar}>
+                  Sincronización Completada — Volver
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}
