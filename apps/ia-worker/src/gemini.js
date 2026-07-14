@@ -84,6 +84,12 @@ export async function extraerDeGemini(pdfBase64) {
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.1,
+      maxOutputTokens: 65536, // tope del modelo
+      // Esta tarea es extracción/transcripción, no razonamiento — sin esto, gemini-2.5-flash
+      // gasta gran parte del presupuesto de salida en "thinking" y trunca el JSON a medio
+      // camino en documentos largos con tablas densas (visto con un doc de 21 páginas:
+      // 35k tokens de thinking, MAX_TOKENS, JSON cortado).
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
