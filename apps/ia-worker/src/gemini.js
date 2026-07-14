@@ -53,19 +53,24 @@ const RESPONSE_SCHEMA = {
   required: ['fluidos', 'clases', 'paginas_texto'],
 };
 
-const PROMPT = `Eres un ingeniero de proyecto revisando un documento técnico de piping industrial (minería, refinería o celulosa) — puede ser una especificación de materiales, un procedimiento de fabricación/soldadura, un estándar, etc.
+const PROMPT = `Eres un ingeniero de proyecto revisando un documento técnico de un proyecto industrial (minería, refinería o celulosa). El documento puede ser de cualquier tipo: una especificación de materiales de piping, un procedimiento de fabricación/soldadura, un estándar, un diccionario de codificación de paquetes de trabajo (AWP/CWP/WBS), un cronograma, un listado de equipos, etc. NO asumas que el documento trata sobre fluidos o piping — la mayoría de los documentos de un proyecto NO lo hacen.
 
 Extrae del documento adjunto:
-1. Todos los códigos de FLUIDOS/SERVICIOS mencionados explícitamente (ej: AG = Agua de proceso, CT = Concentrado), con su descripción. Si el documento no define fluidos, devuelve un arreglo vacío.
-2. Todas las CLASES DE PIPING mencionadas explícitamente (ej: A1, C1), con su descripción, el código de fluido/servicio asociado si se menciona (fluido_codigo), y la presión máxima de diseño (presion_max) y temperatura máxima de diseño (temp_max) si se indican — como valores numéricos simples, sin unidades. Si el documento no define clases de piping, devuelve un arreglo vacío.
-3. El TEXTO COMPLETO de cada página del documento en "paginas_texto" (numero_pagina empezando en 1, texto plano sin encabezados/pies de página repetidos ni marcas de agua de control documental — solo el contenido técnico sustantivo de cada página). Esto se usa para indexar el documento y permitir búsquedas posteriores, así que sé fiel y completo con el contenido técnico (requisitos, normas citadas, procedimientos, tablas descritas en texto), aunque no haya fluidos ni clases de piping en esta página.
 
-Para cada propuesta de fluido o clase indica:
-- "paginas": número(s) de página del PDF donde aparece la definición (empezando en 1).
-- "contexto": una cita textual breve (máx. 200 caracteres) que respalde el dato.
-- "confianza": 0.0 a 1.0, qué tan seguro estás de que el código y los datos son correctos y están completos.
+1. FLUIDOS/SERVICIOS: únicamente si el documento define formalmente un CATÁLOGO o TABLA DE CÓDIGOS de fluidos/servicios de proceso para líneas de cañerías — es decir, un código corto y deliberado (típicamente 1 a 4 letras/números, ej: "AG", "CT", "ND", "PW") asignado explícitamente a un fluido o servicio, normalmente en una tabla o lista de definiciones de una especificación de materiales de cañerías.
+   NO propongas un fluido solo porque la palabra "agua", "aire", "pulpa", "reactivos", "ácido", etc. aparece mencionada en texto libre, en la descripción de un paquete de trabajo, en un plano, o en cualquier otro contexto que no sea la definición formal de un código de catálogo. Si tienes dudas sobre si algo es un código de catálogo real, NO lo incluyas.
+   Documentos como diccionarios AWP/CWP, cronogramas, listados de equipos, MTOs, o especificaciones de fabricación/soldadura NUNCA definen códigos de fluidos — en esos casos el arreglo de fluidos debe quedar vacío.
 
-No inventes códigos que no estén explícitamente en el documento. Responde solo con el JSON solicitado.`;
+2. CLASES DE PIPING: únicamente si el documento define formalmente un CATÁLOGO de clases de piping (ej: "A1", "C1"), normalmente con su rating, material, servicio asociado, presión/temperatura máxima de diseño. Igual criterio estricto que para fluidos: solo códigos de catálogo formalmente definidos, nunca menciones incidentales. Si se menciona, incluye el código de fluido/servicio asociado (fluido_codigo) y presión/temperatura máxima de diseño (presion_max/temp_max) como valores numéricos simples, sin unidades.
+
+3. El TEXTO COMPLETO de cada página del documento en "paginas_texto" (numero_pagina empezando en 1, texto plano sin encabezados/pies de página repetidos ni marcas de agua de control documental — solo el contenido técnico sustantivo de cada página). Esto se usa para indexar el documento y permitir búsquedas posteriores, así que sé fiel y completo con el contenido técnico (requisitos, normas citadas, procedimientos, tablas descritas en texto, códigos de paquetes de trabajo, etc.), independientemente de si hay fluidos o clases de piping en esta página — la gran mayoría de los documentos no los tendrán, y eso es normal.
+
+Para cada propuesta de fluido o clase (si las hay) indica:
+- "paginas": número(s) de página del PDF donde aparece la definición formal del código (empezando en 1).
+- "contexto": una cita textual breve (máx. 200 caracteres) que muestre la definición formal del código, no una mención incidental.
+- "confianza": 0.0 a 1.0. Usa menos de 0.5 si tienes cualquier duda sobre si es realmente un código de catálogo formal.
+
+No inventes códigos que no estén explícitamente definidos como tales en el documento. Responde solo con el JSON solicitado.`;
 
 export async function extraerDeGemini(pdfBase64) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada en el servidor');
