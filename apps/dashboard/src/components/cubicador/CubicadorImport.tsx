@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../supabaseClient';
+import { sanitizarNombreArchivo } from '../../lib/storagePath';
 import '../documental/documental.css';
 import './cubicador.css';
 
@@ -160,7 +161,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId, on
     try {
       const buf = await archivo.arrayBuffer();
       const hash = await hashArchivo(buf);
-      const storagePath = `${proyectoId}/cubicador/${tablaDestino}/${Date.now()}_${archivo.name}`;
+      const storagePath = `${proyectoId}/cubicador/${tablaDestino}/${Date.now()}_${sanitizarNombreArchivo(archivo.name)}`;
 
       const { error: errUpload } = await supabase.storage.from('importaciones').upload(storagePath, archivo, {
         contentType: archivo.type || 'application/octet-stream',

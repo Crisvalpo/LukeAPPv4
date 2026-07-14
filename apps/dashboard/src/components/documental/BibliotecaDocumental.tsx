@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
+import { sanitizarNombreArchivo } from '../../lib/storagePath';
 import './documental.css';
 
 export interface Documento {
@@ -59,7 +60,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
     setSubiendo(true);
     setError(null);
     try {
-      const storagePath = `${proyectoId}/doc/${nuevoTipo}/${Date.now()}_${archivo.name}`;
+      const storagePath = `${proyectoId}/doc/${nuevoTipo}/${Date.now()}_${sanitizarNombreArchivo(archivo.name)}`;
       const { error: errUpload } = await supabase.storage.from('documentos').upload(storagePath, archivo, {
         contentType: archivo.type || 'application/pdf',
       });
