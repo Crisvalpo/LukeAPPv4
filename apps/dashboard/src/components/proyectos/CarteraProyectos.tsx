@@ -117,12 +117,9 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
 
     return (
       <div className="max-w-6xl mx-auto p-8">
-        <button
-          onClick={() => setSeleccionado(null)}
-          className="text-accent font-semibold text-sm hover:underline mb-6 flex items-center gap-2"
-        >
+        <Button variant="outline" size="sm" className="mb-6" onClick={() => setSeleccionado(null)}>
           ← Volver a la cartera
-        </button>
+        </Button>
 
         <Card className="p-8">
           <div className="flex flex-wrap justify-between items-start gap-6">
