@@ -5,7 +5,7 @@ import { sanitizarNombreArchivo } from '../../lib/storagePath';
 import '../documental/documental.css';
 import './cubicador.css';
 
-type TablaDestino = 'list_lineas' | 'list_mto';
+type TablaDestino = 'list_lineas' | 'list_mto' | 'list_isos' | 'list_spools' | 'list_juntas';
 type Accion = 'nueva' | 'modificada' | 'ausente' | 'sin_cambio' | 'error';
 type Fase = 'origen' | 'mapeo' | 'diff' | 'aplicado';
 
@@ -38,6 +38,36 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoCanonico[]> = {
     { campo: 'norma', label: 'Norma', alias: ['norma', 'standard', 'spec'] },
     { campo: 'schedule', label: 'Schedule', alias: ['schedule', 'sch'] },
     { campo: 'heat_number', label: 'N° Colada (Heat)', alias: ['heatnumber', 'heat', 'colada', 'ncolada'] },
+  ],
+  list_isos: [
+    { campo: 'id_iso', label: 'ID Isométrico', requerido: true, alias: ['id_iso', 'idiso', 'iso', 'isometrico'] },
+    { campo: 'id_linea', label: 'ID Línea', alias: ['id_linea', 'idlinea', 'linea'] },
+    { campo: 'sheet', label: 'Sheet (Hoja)', alias: ['sheet', 'hoja', 'hojanumero'] },
+    { campo: 'descripcion', label: 'Descripción', alias: ['descripcion', 'description', 'desc'] },
+    { campo: 'revision', label: 'Revisión', alias: ['revision', 'rev'] },
+    { campo: 'estado', label: 'Estado', alias: ['estado', 'status'] },
+    { campo: 'pdf_path', label: 'PDF Path', alias: ['pdfpath', 'pdf', 'ruta'] },
+  ],
+  list_spools: [
+    { campo: 'id_spool', label: 'ID Spool', requerido: true, alias: ['id_spool', 'idspool', 'spool', 'spoolno', 'spool_no'] },
+    { campo: 'id_iso', label: 'ID Isométrico', alias: ['id_iso', 'idiso', 'iso'] },
+    { campo: 'tag_gestion', label: 'Tag Gestión', alias: ['taggestion', 'tag', 'gestion'] },
+    { campo: 'peso', label: 'Peso', alias: ['peso', 'weight', 'kgs'] },
+    { campo: 'longitud', label: 'Longitud', alias: ['longitud', 'length', 'largo'] },
+    { campo: 'nro_juntas', label: 'N° Juntas', alias: ['nrojuntas', 'njuntas', 'juntas', 'cantjuntas'] },
+    { campo: 'estado_montaje', label: 'Estado Montaje', alias: ['estado', 'estadomontaje', 'status'] },
+    { campo: 'sector', label: 'Sector / Área', alias: ['sector', 'area'] },
+  ],
+  list_juntas: [
+    { campo: 'id_spool', label: 'ID Spool', requerido: true, alias: ['id_spool', 'idspool', 'spool'] },
+    { campo: 'numero_junta', label: 'N° Junta', requerido: true, alias: ['numero_junta', 'numerojunta', 'junta', 'juntano', 'jointno', 'joint_no'] },
+    { campo: 'tipo_union', label: 'Tipo Unión (código)', alias: ['tipo_union', 'tipounion', 'tipo', 'jointtype', 'weldtype'] },
+    { campo: 'nps_texto', label: 'NPS / Diámetro', alias: ['nps', 'diametro', 'size'] },
+    { campo: 'proceso_soldadura', label: 'Proceso Soldadura', alias: ['proceso', 'procesosoldadura', 'wps', 'process'] },
+    { campo: 'material_base', label: 'Material Base', alias: ['material_base', 'materialbase', 'matbase'] },
+    { campo: 'requiere_pwht', label: 'Req. PWHT', alias: ['requiere_pwht', 'reqpwht', 'pwht'] },
+    { campo: 'requiere_pmi', label: 'Req. PMI', alias: ['requiere_pmi', 'reqpmi', 'pmi'] },
+    { campo: 'porcentaje_nde', label: '% NDE', alias: ['porcentaje_nde', 'nde', 'ndt', 'rt'] },
   ],
 };
 
@@ -175,6 +205,11 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId, on
           const valor = header ? fila[header] : undefined;
           payload[c.campo] = valor === undefined || valor === null ? '' : String(valor).trim();
         }
+        
+        if (tablaDestino === 'list_juntas') {
+          payload['id_junta'] = `${payload['id_spool']}_${payload['numero_junta']}`;
+        }
+        
         return payload;
       });
 
@@ -283,6 +318,9 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId, on
             <select value={tablaDestino} onChange={(e) => setTablaDestino(e.target.value as TablaDestino)}>
               <option value="list_lineas">Line List (list_lineas)</option>
               <option value="list_mto">MTO (list_mto)</option>
+              <option value="list_isos">Isométricos (list_isos)</option>
+              <option value="list_spools">Spools (list_spools)</option>
+              <option value="list_juntas">Juntas (list_juntas)</option>
             </select>
           </div>
 

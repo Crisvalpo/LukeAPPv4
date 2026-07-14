@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { NuevoProyectoModal } from './NuevoProyectoModal';
+import { fontDisplay } from '../../theme';
 
 export interface ProyectoKpis {
   id: string;
@@ -211,7 +212,7 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc' }}>Cartera de Proyectos</h1>
+          <h1 style={{ margin: 0, fontSize: '3rem', color: '#f8fafc', fontFamily: fontDisplay, fontWeight: 700, letterSpacing: '-0.02em' }}>Proyectos</h1>
           <p style={{ color: '#94a3b8', margin: '6px 0 0 0', fontSize: '0.95rem' }}>
             {proyectos.length} proyecto{proyectos.length !== 1 ? 's' : ''} visible{proyectos.length !== 1 ? 's' : ''}
           </p>
