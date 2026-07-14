@@ -359,6 +359,15 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
                         <p className="text-[10px] text-muted/60 mt-0.5">
                           Solicitado: {new Date(s.solicitado_en).toLocaleString('es-CL')}
                         </p>
+                        <p className="text-[11px] font-semibold text-accent mt-1.5">
+                          Proyecto solicitado: {
+                            s.proyecto_solicitado_id
+                              ? (proyectos.find(p => p.id === s.proyecto_solicitado_id)
+                                  ? `${proyectos.find(p => p.id === s.proyecto_solicitado_id)!.codigo} — ${proyectos.find(p => p.id === s.proyecto_solicitado_id)!.nombre}`
+                                  : 'Proyecto fuera de tu alcance')
+                              : 'Sin proyecto especificado'
+                          }
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button

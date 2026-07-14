@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
 type Modo = 'ingresar' | 'registrar' | 'recuperar';
+
+interface ProyectoOpcion {
+  id: string;
+  codigo: string;
+  nombre: string;
+}
 
 interface LoginProps {
   avisoInicial?: string | null;
@@ -14,10 +20,18 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
+  const [proyectoSolicitadoId, setProyectoSolicitadoId] = useState('');
   const [mensajeSolicitud, setMensajeSolicitud] = useState('');
+  const [proyectosOpciones, setProyectosOpciones] = useState<ProyectoOpcion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(avisoInicial ?? null);
+
+  useEffect(() => {
+    supabase.rpc('proyectos_publicos_registro').then(({ data }) => {
+      if (data) setProyectosOpciones(data as ProyectoOpcion[]);
+    });
+  }, []);
 
   const resetMensajes = () => { setError(null); setAviso(null); };
 
@@ -42,6 +56,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
       options: {
         data: {
           nombre,
+          proyecto_solicitado_id: proyectoSolicitadoId,
           mensaje_solicitud: mensajeSolicitud,
         },
       },
@@ -50,7 +65,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
       setError(err.message);
     } else {
       setAviso('Solicitud enviada. Un administrador debe aprobar tu cuenta antes de que puedas ingresar. Revisa tu correo para confirmar tu email.');
-      setEmail(''); setPassword(''); setNombre(''); setMensajeSolicitud('');
+      setEmail(''); setPassword(''); setNombre(''); setProyectoSolicitadoId(''); setMensajeSolicitud('');
     }
     setLoading(false);
   };
@@ -151,14 +166,34 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
         {modo === 'registrar' && (
           <div className="flex flex-col gap-1.5 w-full">
             <label className="text-xs font-semibold text-muted font-sans">
-              ¿A qué empresa/proyecto perteneces y quién es tu supervisor?
+              ¿A qué proyecto solicitas acceso?
+            </label>
+            <select
+              value={proyectoSolicitadoId}
+              onChange={(e) => setProyectoSolicitadoId(e.target.value)}
+              required
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 transition-colors"
+            >
+              <option value="">— Selecciona un proyecto —</option>
+              {proyectosOpciones.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.codigo} — {p.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {modo === 'registrar' && (
+          <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-xs font-semibold text-muted font-sans">
+              ¿Quién es tu supervisor o contacto en el proyecto? (opcional)
             </label>
             <textarea
-              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors resize-y min-h-[80px]"
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors resize-y min-h-[60px]"
               value={mensajeSolicitud}
               onChange={(e) => setMensajeSolicitud(e.target.value)}
-              placeholder="Ej: Contratista XYZ, proyecto Andina, supervisor Juan Pérez"
-              required
+              placeholder="Ej: Contratista XYZ, supervisor Juan Pérez"
             />
           </div>
         )}
@@ -168,7 +203,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
           variant="primary"
           className="w-full mt-2"
           loading={loading}
-          disabled={!email || (modo !== 'recuperar' && !password) || (modo === 'registrar' && (!nombre || !mensajeSolicitud))}
+          disabled={!email || (modo !== 'recuperar' && !password) || (modo === 'registrar' && (!nombre || !proyectoSolicitadoId))}
         >
           {modo === 'ingresar' ? 'Ingresar' : modo === 'registrar' ? 'Solicitar cuenta' : 'Enviar enlace de recuperación'}
         </Button>
