@@ -96,7 +96,6 @@ interface LoteResumen {
 
 interface CubicadorImportProps {
   proyectoId: string;
-  onBack: () => void;
 }
 
 const normalizar = (s: string) =>
@@ -123,7 +122,7 @@ const ACCION_META: Record<Accion, { label: string; color: string }> = {
   error: { label: 'Error', color: '#f87171' },
 };
 
-export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId, onBack }) => {
+export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) => {
   const [fase, setFase] = useState<Fase>('origen');
   const [tablaDestino, setTablaDestino] = useState<TablaDestino>('list_lineas');
   const [archivo, setArchivo] = useState<File | null>(null);
@@ -298,7 +297,6 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId, on
   return (
     <div className="rev-section">
       <div className="rev-header">
-        <button className="btn btn-secondary btn-back" onClick={onBack}>← Volver al proyecto</button>
         <div>
           <h2>Importador de Cubicación (Line List / MTO)</h2>
           <p className="doc-subheader">

@@ -49,10 +49,9 @@ interface GestionUsuariosProps {
     puede_administrar_accesos: boolean;
   } | null;
   proyectoActivoId?: string | null;
-  onVolver?: () => void;
 }
 
-export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, proyectoActivoId, onVolver }) => {
+export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, proyectoActivoId }) => {
   const [tab, setTab] = useState<'solicitudes' | 'miembros' | 'globales'>('solicitudes');
   const [proyectos, setProyectos] = useState<ProyectoOpcion[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -280,16 +279,9 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 font-sans">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="font-display text-2xl font-extrabold text-white tracking-tight">Accesos y Usuarios</h1>
-          <p className="text-muted text-xs mt-1">Panel administrativo de control de accesos y roles del sistema.</p>
-        </div>
-        {onVolver && (
-          <Button variant="outline" size="sm" onClick={onVolver}>
-            ← Volver
-          </Button>
-        )}
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-extrabold text-white tracking-tight">Accesos y Usuarios</h1>
+        <p className="text-muted text-xs mt-1">Panel administrativo de control de accesos y roles del sistema.</p>
       </div>
 
       {/* Tabs */}

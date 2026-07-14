@@ -302,7 +302,6 @@ function App() {
           <GestionUsuarios
             perfilGlobal={perfil}
             proyectoActivoId={proyectoActivo}
-            onVolver={handleBackToCartera}
           />
         )}
 
@@ -316,7 +315,6 @@ function App() {
         {vista === 'cubicador' && proyectoActivo && (
           <CubicadorImport
             proyectoId={proyectoActivo}
-            onBack={handleBackToCartera}
           />
         )}
 
