@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { Login } from './components/auth/Login';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { CuentaPendiente, CuentaRechazada, SinProyectos } from './components/auth/EstadosCuenta';
-import { SolicitudesAcceso } from './components/auth/SolicitudesAcceso';
+import { GestionUsuarios } from './components/auth/GestionUsuarios';
 import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
@@ -40,6 +40,10 @@ function App() {
   const [proyectoActivo, setProyectoActivo] = useState<string | null>(null);
   const [docSeleccionado, setDocSeleccionado] = useState<string | null>(null);
 
+  const [membresias, setMembresias] = useState<any[]>([]);
+  const [proyectoActivoDetalle, setProyectoActivoDetalle] = useState<{ codigo: string; nombre: string } | null>(null);
+
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -57,9 +61,42 @@ function App() {
   const fetchPerfil = useCallback(async () => {
     setPerfilCargado(false);
     const { data, error } = await supabase.rpc('mi_perfil').single();
-    if (!error) setPerfil(data as Perfil);
+    if (!error) {
+      setPerfil(data as Perfil);
+      // Cargar membresías del usuario
+      const { data: mems } = await supabase
+        .from('membresias')
+        .select('rol, proyecto_id, proyectos(codigo, nombre)')
+        .eq('usuario_id', session?.user?.id || '')
+        .eq('activo', true);
+      setMembresias(mems || []);
+    }
     setPerfilCargado(true);
-  }, []);
+  }, [session]);
+
+  useEffect(() => {
+    if (proyectoActivo) {
+      const memActiva = membresias.find(m => m.proyecto_id === proyectoActivo);
+      if (memActiva) {
+        setProyectoActivoDetalle({
+          codigo: memActiva.proyectos.codigo,
+          nombre: memActiva.proyectos.nombre
+        });
+      } else {
+        // Fallback para usuarios con acceso_global que entran a un proyecto sin membresía directa
+        supabase.from('proyectos')
+          .select('codigo, nombre')
+          .eq('id', proyectoActivo)
+          .single()
+          .then(({ data }) => {
+            if (data) setProyectoActivoDetalle(data);
+          });
+      }
+    } else {
+      setProyectoActivoDetalle(null);
+    }
+  }, [proyectoActivo, membresias]);
+
 
   useEffect(() => {
     if (session && !recoveryMode) {
@@ -192,7 +229,7 @@ function App() {
               size="sm"
               onClick={handleBackToCartera}
             >
-              ← Cartera
+              ← Proyectos
             </Button>
           )}
         </div>
@@ -204,10 +241,47 @@ function App() {
               size="sm"
               onClick={() => setVista('solicitudes')}
             >
-              Solicitudes
+              Usuarios
             </Button>
           )}
-          <span className="text-muted text-sm">{session.user.email}</span>
+
+          {/* Badge de Perfil de Usuario */}
+          {(() => {
+            const getRolYProyectoActivos = () => {
+              if (!proyectoActivo) {
+                return {
+                  rol: perfil?.acceso_global ? 'GERENCIA' : '—',
+                  proyecto: 'Proyectos'
+                };
+              }
+              const memActiva = membresias.find(m => m.proyecto_id === proyectoActivo);
+              const rol = memActiva ? memActiva.rol : (perfil?.acceso_global ? 'GERENCIA' : '—');
+              const proyecto = proyectoActivoDetalle?.codigo || 'Cargando…';
+              return { rol, proyecto };
+            };
+            const { rol: rolActivo, proyecto: proyActivoText } = getRolYProyectoActivos();
+            return (
+              <div className="flex items-center gap-3 bg-card/60 border border-border px-3 py-1.5 rounded-lg">
+                <div className="flex flex-col text-right">
+                  <span className="text-white text-xs font-bold font-sans leading-tight">
+                    {session.user.email}
+                  </span>
+                  <span className="text-muted text-[10px] font-medium font-sans mt-0.5">
+                    {proyectoActivo ? `Proyecto: ${proyActivoText}` : 'Proyectos'}
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-border/80" />
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                  rolActivo === 'ADMIN' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                  rolActivo === 'GERENCIA' ? 'bg-accent/10 text-accent border border-accent/20' :
+                  'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                }`}>
+                  {rolActivo}
+                </span>
+              </div>
+            );
+          })()}
+
           <Button
             variant="outline"
             size="sm"
@@ -225,7 +299,11 @@ function App() {
         )}
 
         {vista === 'solicitudes' && perfil?.puede_administrar_accesos && (
-          <SolicitudesAcceso />
+          <GestionUsuarios
+            perfilGlobal={perfil}
+            proyectoActivoId={proyectoActivo}
+            onVolver={handleBackToCartera}
+          />
         )}
 
         {vista === 'ingesta_ia' && proyectoActivo && (

@@ -59,10 +59,14 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
     e.preventDefault();
     setLoading(true);
     resetMensajes();
-    await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
     });
-    setAviso('Si el correo está registrado, te enviamos un enlace para restablecer la contraseña.');
+    if (error) {
+      setError(error.message);
+    } else {
+      setAviso('Si el correo está registrado, te enviamos un enlace para restablecer la contraseña.');
+    }
     setLoading(false);
   };
 

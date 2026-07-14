@@ -1,18 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../supabaseClient';
-
-const inputStyle: React.CSSProperties = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
-  padding: '12px 16px',
-  color: '#f8fafc',
-  fontSize: '1rem',
-  outline: 'none',
-  width: '100%',
-  boxSizing: 'border-box',
-  fontFamily: 'inherit',
-};
+import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
 
 interface ResetPasswordProps {
   onCompletado: () => void;
@@ -43,41 +32,35 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onCompletado }) =>
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', padding: '20px' }}>
-      <form onSubmit={handleSubmit} style={{
-        backgroundColor: '#1e293b',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '420px',
-        padding: '40px 32px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{
-            fontSize: '1.8rem',
-            fontWeight: 800,
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
-            LukeAPP v4
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-5 relative overflow-hidden">
+      {/* Patrón de fondo serio e industrial */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-20"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      <form onSubmit={handleSubmit} className="relative bg-card/80 backdrop-blur-md border border-border rounded-xl w-full max-w-md p-8 md:p-10 flex flex-col gap-6 shadow-2xl z-10">
+        <div className="text-center mb-2">
+          <div className="font-display text-3xl font-extrabold tracking-tight">
+            <span className="text-white">LukeAPP</span>{' '}
+            <span className="text-accent">v4</span>
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '8px 0 0 0' }}>Elige una nueva contraseña</p>
+          <p className="font-sans text-muted text-sm mt-2">Elige una nueva contraseña</p>
         </div>
 
         {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#f87171', fontSize: '0.875rem' }}>
+          <div className="bg-red-500/10 border border-red-500/25 rounded-md px-4 py-3 text-red-500 text-sm leading-relaxed">
             ⚠️ {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#cbd5e1' }}>Nueva contraseña</label>
-          <input
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-foreground">Nueva contraseña</label>
+          <Input
             type="password"
             autoComplete="new-password"
             value={password}
@@ -85,13 +68,12 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onCompletado }) =>
             placeholder="••••••••"
             required
             minLength={6}
-            style={inputStyle}
           />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#cbd5e1' }}>Confirmar contraseña</label>
-          <input
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-foreground">Confirmar contraseña</label>
+          <Input
             type="password"
             autoComplete="new-password"
             value={confirmacion}
@@ -99,28 +81,16 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onCompletado }) =>
             placeholder="••••••••"
             required
             minLength={6}
-            style={inputStyle}
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={loading || !password || !confirmacion}
-          style={{
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '12px',
-            fontWeight: 700,
-            fontSize: '1rem',
-            cursor: loading ? 'wait' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-            marginTop: '8px',
-          }}
+          className="w-full mt-2"
         >
           {loading ? 'Guardando…' : 'Actualizar contraseña'}
-        </button>
+        </Button>
       </form>
     </div>
   );

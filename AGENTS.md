@@ -19,6 +19,8 @@ Documentos: `LukeAPP v4 - Arquitectura Multi-Proyecto.docx` (decisiones) · `INS
 1. **Tailwind CSS obligatorio**: Todo el estilo debe manejarse con clases utilitarias de Tailwind. Cero estilos en línea (`style={{}}`) y cero archivos `.css` personalizados.
 2. **Estética Industrial Seria**: Plataforma corporativa para construcción/montaje. No uses efectos de brillo desmesurado, estrellitas, glassmorphism excesivo ni diseños lúdicos. Interfaz sobria, de alto contraste y altamente funcional orientada al dato.
 3. **Componentes Base**: Centraliza átomos UI (Botones, Inputs, Cards) en `src/components/ui/` construidos con Tailwind para mantener consistencia.
+4. **Consistencia Visual y Cohesión de Diseño**: No mezcles estilos ni utilices colores, fuentes o márgenes ad-hoc. Toda sección de la plataforma debe parecer construida por el mismo diseñador. Usa la misma paleta de colores oscuros, tipografía sans-serif (`font-sans` para el cuerpo, `font-display` para los títulos) y los componentes atómicos centralizados (`Button`, `Input`, `Card`). Los títulos principales deben usar tipografía uniforme y seguir la misma escala tipográfica de las demás vistas de la app. No se permiten fuentes serif (como Times New Roman) ni estilos sin procesar.
+
 
 ## Reglas de datos (inviolables)
 1. **Toda tabla operativa lleva `proyecto_id`** (FK a `proyectos`). IDs de negocio (`id_linea`, `id_iso`, `id_spool`, `id_junta`, …) únicos **por proyecto**: `UNIQUE (proyecto_id, id_negocio)`. Nunca únicos globales.
