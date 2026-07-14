@@ -204,7 +204,7 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                 </label>
                 <input 
                   type="text" 
-                  placeholder="Ej: EIMI00414"
+                  placeholder="Ej: PROY-413"
                   value={codigo}
                   onChange={(e) => setCodigo(e.target.value)}
                   style={{
