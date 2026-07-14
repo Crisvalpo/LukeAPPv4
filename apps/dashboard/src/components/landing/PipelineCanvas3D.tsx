@@ -4,7 +4,7 @@ import { PerspectiveCamera, ContactShadows, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { colors, fontDisplay, fontBody, section } from './theme';
+import { colors, fontDisplay, fontBody, section } from '../../theme';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -53,9 +53,9 @@ function PipeSpool({ scrollProgress }: { scrollProgress: number }) {
 
   return (
     <group ref={groupRef} position={[0, 0.3, 0]}>
-      {/* Tramo horizontal */}
-      <mesh position={[-2.1, 0.9, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.26, 0.26, 3.2, 40]} />
+      {/* Tramo horizontal — llega hasta la cara de la válvula (x=0.64), sin hueco */}
+      <mesh position={[-1.53, 0.9, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.26, 0.26, 4.34, 40]} />
         <meshPhysicalMaterial ref={registerPipeMat(0)} color={colors.statusPending} {...pipeMatProps} />
       </mesh>
       {/* Codo */}

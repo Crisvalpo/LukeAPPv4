@@ -4,7 +4,7 @@ import { HeroIsometric } from './HeroIsometric';
 import { PipelineCanvas3D } from './PipelineCanvas3D';
 import { FeaturesSection } from './FeaturesSection';
 import { CTASection } from './CTASection';
-import { colors, fontBody } from './theme';
+import { colors, fontBody } from '../../theme';
 
 export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
   const [scrolled, setScrolled] = useState(false);

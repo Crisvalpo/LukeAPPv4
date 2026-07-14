@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { colors, fontDisplay, fontBody, section } from './theme';
+import { colors, fontDisplay, fontBody, section } from '../../theme';
 
 gsap.registerPlugin(ScrollTrigger);
 

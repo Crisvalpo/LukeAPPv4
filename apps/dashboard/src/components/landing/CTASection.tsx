@@ -1,4 +1,4 @@
-import { colors, fontDisplay, fontBody, section } from './theme';
+import { colors, fontDisplay, fontBody, section } from '../../theme';
 
 interface CTASectionProps {
   onLoginClick: () => void;

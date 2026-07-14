@@ -1,22 +1,40 @@
 import React, { useState } from 'react';
 import { supabase } from '../../supabaseClient';
+import { colors, fontDisplay, fontBody } from '../../theme';
 
 type Modo = 'ingresar' | 'registrar' | 'recuperar';
 
 const inputStyle: React.CSSProperties = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
+  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  border: `1px solid ${colors.border}`,
+  borderRadius: '10px',
   padding: '12px 16px',
-  color: '#f8fafc',
-  fontSize: '1rem',
+  color: colors.text,
+  fontSize: '0.95rem',
   outline: 'none',
   width: '100%',
   boxSizing: 'border-box',
-  fontFamily: 'inherit',
+  fontFamily: fontBody,
+  transition: 'border-color 0.2s ease, background 0.2s ease',
 };
 
-const labelStyle: React.CSSProperties = { fontSize: '0.875rem', fontWeight: 600, color: '#cbd5e1' };
+const labelStyle: React.CSSProperties = {
+  fontFamily: fontBody,
+  fontSize: '0.82rem',
+  fontWeight: 600,
+  color: colors.textMuted,
+};
+
+const focusHandlers = {
+  onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = colors.accentSky;
+    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+  },
+  onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = colors.border;
+    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+  },
+};
 
 interface LoginProps {
   avisoInicial?: string | null;
@@ -89,38 +107,56 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#0f172a',
+      background: `radial-gradient(ellipse 70% 55% at 50% 30%, rgba(56,189,248,0.08), transparent 70%), ${colors.bg}`,
       padding: '20px',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          maskImage: 'radial-gradient(ellipse 60% 60% at 50% 35%, black 30%, transparent 80%)',
+        }}
+      />
+
       <form
         onSubmit={modo === 'ingresar' ? handleIngresar : modo === 'registrar' ? handleRegistrar : handleRecuperar}
         style={{
-          backgroundColor: '#1e293b',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '16px',
+          position: 'relative',
+          backgroundColor: colors.bgCard,
+          backdropFilter: 'blur(16px)',
+          border: `1px solid ${colors.border}`,
+          borderRadius: '18px',
           width: '100%',
           maxWidth: '420px',
           padding: '40px 32px',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.6)',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
           <div style={{
-            fontSize: '1.8rem',
-            fontWeight: 800,
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+            fontFamily: fontDisplay,
+            fontSize: '1.6rem',
+            fontWeight: 700,
+            letterSpacing: '-0.01em',
+            background: colors.accentGradient,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}>
             LukeAPP v4
           </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '8px 0 0 0' }}>
+          <p style={{ fontFamily: fontBody, color: colors.textMuted, fontSize: '0.88rem', margin: '8px 0 0 0' }}>
             {modo === 'ingresar' && 'Plataforma de trazabilidad de montaje industrial'}
             {modo === 'registrar' && 'Solicitar una cuenta nueva'}
             {modo === 'recuperar' && 'Recuperar contraseña'}
@@ -128,13 +164,13 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
         </div>
 
         {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#f87171', fontSize: '0.875rem' }}>
-            ⚠️ {error}
+          <div style={{ fontFamily: fontBody, backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', padding: '12px 16px', color: '#f87171', fontSize: '0.85rem', lineHeight: 1.5 }}>
+            {error}
           </div>
         )}
         {aviso && (
-          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#34d399', fontSize: '0.875rem' }}>
-            ✓ {aviso}
+          <div style={{ fontFamily: fontBody, backgroundColor: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: '10px', padding: '12px 16px', color: colors.statusInstalled, fontSize: '0.85rem', lineHeight: 1.5 }}>
+            {aviso}
           </div>
         )}
 
@@ -148,6 +184,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
               placeholder="Nombre y apellido"
               required
               style={inputStyle}
+              {...focusHandlers}
             />
           </div>
         )}
@@ -162,6 +199,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
             placeholder="usuario@empresa.cl"
             required
             style={inputStyle}
+            {...focusHandlers}
           />
         </div>
 
@@ -177,6 +215,7 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
               required
               minLength={modo === 'registrar' ? 6 : undefined}
               style={inputStyle}
+              {...focusHandlers}
             />
           </div>
         )}
@@ -190,7 +229,8 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
               placeholder="Ej: Contratista XYZ, proyecto Andina, supervisor Juan Pérez"
               rows={3}
               required
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+              style={{ ...inputStyle, resize: 'vertical' }}
+              {...focusHandlers}
             />
           </div>
         )}
@@ -199,17 +239,22 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
           type="submit"
           disabled={loading || !email || (modo !== 'recuperar' && !password) || (modo === 'registrar' && (!nombre || !mensajeSolicitud))}
           style={{
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-            color: 'white',
+            fontFamily: fontBody,
+            background: colors.accentGradient,
+            color: '#08101f',
             border: 'none',
-            borderRadius: '8px',
-            padding: '12px',
+            borderRadius: '10px',
+            padding: '13px',
             fontWeight: 700,
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             cursor: loading ? 'wait' : 'pointer',
             opacity: loading ? 0.6 : 1,
             marginTop: '8px',
+            boxShadow: '0 12px 28px rgba(56, 189, 248, 0.2)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
           }}
+          onMouseOver={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 16px 34px rgba(56, 189, 248, 0.3)'; } }}
+          onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(56, 189, 248, 0.2)'; }}
         >
           {loading ? 'Procesando…' : modo === 'ingresar' ? 'Ingresar' : modo === 'registrar' ? 'Solicitar cuenta' : 'Enviar enlace de recuperación'}
         </button>
@@ -230,10 +275,12 @@ export const Login: React.FC<LoginProps> = ({ avisoInicial }) => {
 };
 
 const linkStyle: React.CSSProperties = {
+  fontFamily: fontBody,
   background: 'none',
   border: 'none',
-  color: '#38bdf8',
+  color: colors.accentSky,
   cursor: 'pointer',
   fontWeight: 600,
+  fontSize: '0.85rem',
   padding: 0,
 };

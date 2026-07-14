@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { FileSpreadsheet, Sparkles, Link2, Building2 } from 'lucide-react';
-import { colors, fontDisplay, fontBody, section, eyebrow } from './theme';
+import { colors, fontDisplay, fontBody, section, eyebrow } from '../../theme';
 
 gsap.registerPlugin(ScrollTrigger);
 
