@@ -603,3 +603,64 @@
 .rev-summary strong {
   color: #f8fafc;
 }
+
+/* Búsqueda semántica (RAG) */
+.rag-search-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.rag-search-bar input {
+  flex-grow: 1;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.rag-search-bar input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.rag-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.rag-resultado-item {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.rag-resultado-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.rag-resultado-doc {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.rag-resultado-similitud {
+  color: #34d399;
+  font-weight: 700;
+}
+
+.rag-resultado-texto {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

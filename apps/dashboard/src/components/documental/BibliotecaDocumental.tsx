@@ -23,6 +23,16 @@ interface BibliotecaDocumentalProps {
   onSelectLote: (docId: string) => void;
 }
 
+interface ResultadoBusqueda {
+  chunk_id: string;
+  documento_id: string;
+  titulo_doc: string;
+  nro_chunk: number;
+  pagina_inicio: number | null;
+  contenido: string;
+  similitud: number;
+}
+
 const IA_WORKER_URL = import.meta.env.VITE_IA_WORKER_URL as string | undefined;
 
 export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proyectoId, onSelectLote }) => {
@@ -38,6 +48,10 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
   const [nuevaRev, setNuevaRev] = useState('0');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [mostrarModal, setMostrarModal] = useState(false);
+
+  const [query, setQuery] = useState('');
+  const [buscando, setBuscando] = useState(false);
+  const [resultados, setResultados] = useState<ResultadoBusqueda[] | null>(null);
 
   const fetchDocumentos = useCallback(async () => {
     setLoading(true);
@@ -125,6 +139,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       case 'procesando': return 'badge status-procesando';
       case 'extrayendo': return 'badge status-extrayendo';
       case 'lote_generado': return 'badge status-lote-generado';
+      case 'procesado': return 'badge status-completado';
       case 'completado': return 'badge status-completado';
       case 'error': return 'badge status-error';
       default: return 'badge';
@@ -137,9 +152,34 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       case 'procesando': return 'Preparando documento...';
       case 'extrayendo': return 'Gemini extrayendo datos...';
       case 'lote_generado': return 'Propuestas Listas (Staging)';
+      case 'procesado': return 'Indexado (buscable)';
       case 'completado': return 'Aplicado (Catálogo)';
       case 'error': return 'Error Procesamiento';
       default: return status;
+    }
+  };
+
+  const handleBuscar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    if (!IA_WORKER_URL) { setError('VITE_IA_WORKER_URL no está configurado.'); return; }
+    setBuscando(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no válida.');
+      const res = await fetch(`${IA_WORKER_URL}/buscar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ proyecto_id: proyectoId, query }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `Error del worker IA (${res.status})`);
+      setResultados(body.resultados as ResultadoBusqueda[]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al buscar.');
+    } finally {
+      setBuscando(false);
     }
   };
 
@@ -154,6 +194,41 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
           <span className="icon">+</span> Subir Documento PDF
         </button>
       </div>
+
+      <form className="rag-search-bar" onSubmit={handleBuscar}>
+        <input
+          type="text"
+          placeholder="Buscar en el contenido de todos los documentos indexados (ej: espesor mínimo de pared, PWHT, ensayos NDE...)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button type="submit" className="btn btn-secondary" disabled={buscando || !query.trim()}>
+          {buscando ? 'Buscando…' : '🔍 Buscar'}
+        </button>
+        {resultados !== null && (
+          <button type="button" className="btn btn-secondary" onClick={() => { setResultados(null); setQuery(''); }}>
+            ✕ Limpiar
+          </button>
+        )}
+      </form>
+
+      {resultados !== null && (
+        <div className="rag-resultados">
+          {resultados.length === 0 ? (
+            <p className="doc-subheader">Sin resultados relevantes para esta búsqueda.</p>
+          ) : (
+            resultados.map((r) => (
+              <div key={r.chunk_id} className="rag-resultado-item">
+                <div className="rag-resultado-header">
+                  <span className="rag-resultado-doc">📄 {r.titulo_doc}{r.pagina_inicio != null ? ` — Pág. ${r.pagina_inicio}` : ''}</span>
+                  <span className="rag-resultado-similitud">{Math.round(r.similitud * 100)}% relevante</span>
+                </div>
+                <p className="rag-resultado-texto">{r.contenido}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {error && (
         <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#f87171', fontSize: '0.875rem', marginBottom: '20px' }}>
@@ -186,6 +261,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                   <span><strong>Rev:</strong> {doc.revision || 'N/A'}</span>
                   <span><strong>Tipo:</strong> {doc.tipo_documento.replace('_', ' ').toUpperCase()}</span>
                   {doc.n_paginas != null && <span><strong>Págs:</strong> {doc.n_paginas}</span>}
+                  {doc.n_chunks != null && <span><strong>Indexado:</strong> {doc.n_chunks} secciones</span>}
                 </div>
 
                 {doc.estado_procesamiento === 'error' && doc.error_detalle && (
