@@ -5,8 +5,9 @@ import { Login } from './components/auth/Login';
 import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
+import CubicadorImport from './components/cubicador/CubicadorImport';
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,7 +15,6 @@ function App() {
   const [vista, setVista] = useState<Vista>('cartera');
   // proyecto_id siempre viene del contexto de navegación (drill-down), nunca hardcodeado
   const [proyectoActivo, setProyectoActivo] = useState<string | null>(null);
-  const [loteSeleccionado, setLoteSeleccionado] = useState<string | null>(null);
   const [docSeleccionado, setDocSeleccionado] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,22 +33,24 @@ function App() {
     setVista('ingesta_ia');
   };
 
-  const handleSelectLote = (loteId: string, docId: string) => {
-    setLoteSeleccionado(loteId);
+  const handleAbrirCubicador = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('cubicador');
+  };
+
+  const handleSelectLote = (docId: string) => {
     setDocSeleccionado(docId);
     setVista('revision_lote');
   };
 
   const handleBackToBiblioteca = () => {
     setVista('ingesta_ia');
-    setLoteSeleccionado(null);
     setDocSeleccionado(null);
   };
 
   const handleBackToCartera = () => {
     setVista('cartera');
     setProyectoActivo(null);
-    setLoteSeleccionado(null);
     setDocSeleccionado(null);
   };
 
@@ -147,7 +149,7 @@ function App() {
       {/* Contenido Principal */}
       <main style={{ flexGrow: 1 }}>
         {vista === 'cartera' && (
-          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} />
+          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} onAbrirCubicador={handleAbrirCubicador} />
         )}
 
         {vista === 'ingesta_ia' && proyectoActivo && (
@@ -157,9 +159,15 @@ function App() {
           />
         )}
 
-        {vista === 'revision_lote' && loteSeleccionado && docSeleccionado && (
+        {vista === 'cubicador' && proyectoActivo && (
+          <CubicadorImport
+            proyectoId={proyectoActivo}
+            onBack={handleBackToCartera}
+          />
+        )}
+
+        {vista === 'revision_lote' && docSeleccionado && (
           <RevisionLoteIA
-            loteId={loteSeleccionado}
             docId={docSeleccionado}
             onBack={handleBackToBiblioteca}
             onCompletado={handleCompletado}

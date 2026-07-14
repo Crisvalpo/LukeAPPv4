@@ -33,9 +33,10 @@ const ESTADO_META: Record<string, { label: string; color: string }> = {
 
 interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
+  onAbrirCubicador: (proyectoId: string) => void;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,20 +130,36 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
                 Mandante: {seleccionado.mandante ?? '—'}
               </p>
             </div>
-            <button
-              onClick={() => onAbrirIngesta(seleccionado.id)}
-              style={{
-                background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              ✨ Ingesta Documental IA
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => onAbrirCubicador(seleccionado.id)}
+                style={{
+                  background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                📊 Importar Cubicación
+              </button>
+              <button
+                onClick={() => onAbrirIngesta(seleccionado.id)}
+                style={{
+                  background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ✨ Ingesta Documental IA
+              </button>
+            </div>
           </div>
 
           {/* Avance físico de juntas */}

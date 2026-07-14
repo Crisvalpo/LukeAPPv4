@@ -1,0 +1,17 @@
+{
+  "name": "@lukeapp/ia-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LukeAPP v4 — Worker de extracción documental con Gemini (P4: Ingesta Documental IA)",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

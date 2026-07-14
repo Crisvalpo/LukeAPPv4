@@ -1,119 +1,121 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../../supabaseClient';
 import './documental.css';
 
-// Interfaces de tipos
 export interface Documento {
   id: string;
   proyecto_id: string;
   tipo_documento: 'adenda' | 'especificacion_tecnica' | 'estandar' | 'cwp' | 'line_list' | 'pid' | 'plano' | 'procedimiento' | 'otro';
   titulo: string;
-  descripcion?: string;
-  revision?: string;
+  descripcion?: string | null;
+  revision?: string | null;
   storage_path: string;
   estado_procesamiento: 'pendiente' | 'procesando' | 'procesado' | 'extrayendo' | 'lote_generado' | 'completado' | 'error';
-  n_paginas?: number;
-  n_chunks?: number;
-  error_detalle?: string;
+  n_paginas?: number | null;
+  n_chunks?: number | null;
+  error_detalle?: string | null;
   creado_en: string;
-  lote_ia_id?: string;
 }
 
 interface BibliotecaDocumentalProps {
   proyectoId: string;
-  onSelectLote: (loteId: string, docId: string) => void;
+  onSelectLote: (docId: string) => void;
 }
 
-// Datos demo iniciales
-const DATOS_DEMO: Documento[] = [
-  {
-    id: 'doc-001',
-    proyecto_id: 'proj-413',
-    tipo_documento: 'especificacion_tecnica',
-    titulo: 'Espec. Técnica de Piping y Materiales',
-    descripcion: 'Especificación general de piping y requerimientos de ensayos no destructivos',
-    revision: 'B',
-    storage_path: 'proj-413/doc/especificacion_tecnica/spec_piping_revB.pdf',
-    estado_procesamiento: 'lote_generado',
-    n_paginas: 3,
-    n_chunks: 12,
-    creado_en: '2026-07-13T10:30:00Z',
-    lote_ia_id: 'lote-ia-999'
-  },
-  {
-    id: 'doc-002',
-    proyecto_id: 'proj-413',
-    tipo_documento: 'adenda',
-    titulo: 'Adenda 01 - Especificación QA/QC',
-    descripcion: 'Modificaciones al porcentaje de radiografías en juntas clase A2',
-    revision: '0',
-    storage_path: 'proj-413/doc/adenda/adenda_01_qaqc.pdf',
-    estado_procesamiento: 'pendiente',
-    creado_en: '2026-07-13T12:15:00Z'
-  }
-];
+const IA_WORKER_URL = import.meta.env.VITE_IA_WORKER_URL as string | undefined;
 
 export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proyectoId, onSelectLote }) => {
-  const [documentos, setDocumentos] = useState<Documento[]>(DATOS_DEMO);
+  const [documentos, setDocumentos] = useState<Documento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
-  
-  // Estados para nuevo documento
+
   const [nuevoTitulo, setNuevoTitulo] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState<Documento['tipo_documento']>('especificacion_tecnica');
   const [nuevaDesc, setNuevaDesc] = useState('');
   const [nuevaRev, setNuevaRev] = useState('0');
+  const [archivo, setArchivo] = useState<File | null>(null);
   const [mostrarModal, setMostrarModal] = useState(false);
 
-  const handleSubir = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nuevoTitulo.trim()) return;
+  const fetchDocumentos = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: err } = await supabase
+      .from('doc_biblioteca')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('creado_en', { ascending: false });
+    if (err) setError(err.message);
+    else setDocumentos((data as Documento[]) ?? []);
+    setLoading(false);
+  }, [proyectoId]);
 
+  useEffect(() => { fetchDocumentos(); }, [fetchDocumentos]);
+
+  const handleSubir = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevoTitulo.trim() || !archivo) return;
     setSubiendo(true);
-    // Simular carga a Supabase Storage
-    setTimeout(() => {
-      const nuevoDoc: Documento = {
-        id: `doc-${Date.now()}`,
+    setError(null);
+    try {
+      const storagePath = `${proyectoId}/doc/${nuevoTipo}/${Date.now()}_${archivo.name}`;
+      const { error: errUpload } = await supabase.storage.from('documentos').upload(storagePath, archivo, {
+        contentType: archivo.type || 'application/pdf',
+      });
+      if (errUpload) throw errUpload;
+
+      const { error: errInsert } = await supabase.from('doc_biblioteca').insert({
         proyecto_id: proyectoId,
         tipo_documento: nuevoTipo,
         titulo: nuevoTitulo,
-        descripcion: nuevaDesc || undefined,
-        revision: nuevaRev || undefined,
-        storage_path: `${proyectoId}/doc/${nuevoTipo}/${nuevoTitulo.toLowerCase().replace(/ /g, '_')}.pdf`,
-        estado_procesamiento: 'pendiente',
-        creado_en: new Date().toISOString()
-      };
-      
-      setDocumentos([nuevoDoc, ...documentos]);
-      setSubiendo(false);
+        descripcion: nuevaDesc || null,
+        revision: nuevaRev || null,
+        storage_path: storagePath,
+        nombre_original: archivo.name,
+        tamanio_bytes: archivo.size,
+        mime_type: archivo.type || 'application/pdf',
+      });
+      if (errInsert) throw errInsert;
+
       setMostrarModal(false);
-      
-      // Limpiar inputs
       setNuevoTitulo('');
       setNuevaDesc('');
       setNuevaRev('0');
-    }, 1500);
+      setArchivo(null);
+      await fetchDocumentos();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al subir el documento.');
+    } finally {
+      setSubiendo(false);
+    }
   };
 
-  const handleProcesarIA = (docId: string) => {
+  const handleProcesarIA = async (docId: string) => {
+    if (!IA_WORKER_URL) {
+      setError('VITE_IA_WORKER_URL no está configurado.');
+      return;
+    }
     setProcesandoId(docId);
-    
-    // Cambiar estado a 'procesando'
-    setDocumentos(prev => prev.map(d => d.id === docId ? { ...d, estado_procesamiento: 'procesando' } : d));
-    
-    // Simular las fases del pipeline IA: OCR/Chunks -> Extracción -> Generar Lote
-    setTimeout(() => {
-      setDocumentos(prev => prev.map(d => d.id === docId ? { ...d, estado_procesamiento: 'extrayendo', n_paginas: 3, n_chunks: 8 } : d));
-      
-      setTimeout(() => {
-        const loteId = `lote-ia-${Date.now()}`;
-        setDocumentos(prev => prev.map(d => d.id === docId ? { 
-          ...d, 
-          estado_procesamiento: 'lote_generado',
-          lote_ia_id: loteId
-        } : d));
-        setProcesandoId(null);
-      }, 2000);
-    }, 2000);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sesión no válida.');
+
+      const res = await fetch(`${IA_WORKER_URL}/procesar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ documento_id: docId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `Error del worker IA (${res.status})`);
+      await fetchDocumentos();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al procesar con IA.');
+      await fetchDocumentos();
+    } finally {
+      setProcesandoId(null);
+    }
   };
 
   const getStatusBadgeClass = (status: Documento['estado_procesamiento']) => {
@@ -131,8 +133,8 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
   const getStatusLabel = (status: Documento['estado_procesamiento']) => {
     switch (status) {
       case 'pendiente': return 'Pendiente IA';
-      case 'procesando': return 'Chunks & Embeddings...';
-      case 'extrayendo': return 'Extrayendo con Gemini...';
+      case 'procesando': return 'Preparando documento...';
+      case 'extrayendo': return 'Gemini extrayendo datos...';
       case 'lote_generado': return 'Propuestas Listas (Staging)';
       case 'completado': return 'Aplicado (Catálogo)';
       case 'error': return 'Error Procesamiento';
@@ -145,78 +147,88 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       <div className="doc-header">
         <div>
           <h2>Ingesta Documental con IA</h2>
-          <p className="doc-subheader">Sube especificaciones y adendas en PDF para extraer clases de piping y poblar catálogos automáticamente con Gemini.</p>
+          <p className="doc-subheader">Sube especificaciones y adendas en PDF para extraer clases de piping y fluidos con Gemini, y poblar catálogos con aprobación humana.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setMostrarModal(true)}>
           <span className="icon">+</span> Subir Documento PDF
         </button>
       </div>
 
-      <div className="doc-grid">
-        {documentos.map((doc) => (
-          <div key={doc.id} className="doc-card">
-            <div className="doc-card-badge">
-              <span className={getStatusBadgeClass(doc.estado_procesamiento)}>
-                {getStatusLabel(doc.estado_procesamiento)}
-              </span>
-            </div>
-            
-            <div className="doc-card-body">
-              <div className="doc-pdf-icon">📄</div>
-              <h3 className="doc-title">{doc.titulo}</h3>
-              {doc.descripcion && <p className="doc-desc">{doc.descripcion}</p>}
-              
-              <div className="doc-meta-info">
-                <span><strong>Rev:</strong> {doc.revision || 'N/A'}</span>
-                <span><strong>Tipo:</strong> {doc.tipo_documento.replace('_', ' ').toUpperCase()}</span>
-                {doc.n_paginas && <span><strong>Págs:</strong> {doc.n_paginas}</span>}
-                {doc.n_chunks && <span><strong>Chunks (RAG):</strong> {doc.n_chunks}</span>}
-              </div>
-              
-              <div className="doc-date">
-                Subido el: {new Date(doc.creado_en).toLocaleString('es-CL')}
-              </div>
-            </div>
+      {error && (
+        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#f87171', fontSize: '0.875rem', marginBottom: '20px' }}>
+          ⚠️ {error}
+        </div>
+      )}
 
-            <div className="doc-card-footer">
-              {doc.estado_procesamiento === 'pendiente' && (
-                <button 
-                  className="btn btn-action btn-ia" 
-                  onClick={() => handleProcesarIA(doc.id)}
-                  disabled={procesandoId !== null}
-                >
-                  ✨ Procesar con Gemini IA
-                </button>
-              )}
-              {doc.estado_procesamiento === 'procesando' && (
-                <div className="loader-container">
-                  <div className="spinner"></div>
-                  <span>Generando vectores RAG...</span>
-                </div>
-              )}
-              {doc.estado_procesamiento === 'extrayendo' && (
-                <div className="loader-container">
-                  <div className="spinner pulse"></div>
-                  <span>Gemini extrayendo datos...</span>
-                </div>
-              )}
-              {doc.estado_procesamiento === 'lote_generado' && doc.lote_ia_id && (
-                <button 
-                  className="btn btn-action btn-success"
-                  onClick={() => onSelectLote(doc.lote_ia_id!, doc.id)}
-                >
-                  👁️ Revisar y Aprobar Cambios
-                </button>
-              )}
-              {doc.estado_procesamiento === 'completado' && (
-                <span className="success-text">✓ Datos aplicados al Catálogo</span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="loader-container"><div className="spinner"></div><span>Cargando biblioteca…</span></div>
+      ) : documentos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 24px', color: '#94a3b8' }}>
+          No hay documentos subidos todavía para este proyecto.
+        </div>
+      ) : (
+        <div className="doc-grid">
+          {documentos.map((doc) => (
+            <div key={doc.id} className="doc-card">
+              <div className="doc-card-badge">
+                <span className={getStatusBadgeClass(doc.estado_procesamiento)}>
+                  {getStatusLabel(doc.estado_procesamiento)}
+                </span>
+              </div>
 
-      {/* Modal de Carga */}
+              <div className="doc-card-body">
+                <div className="doc-pdf-icon">📄</div>
+                <h3 className="doc-title">{doc.titulo}</h3>
+                {doc.descripcion && <p className="doc-desc">{doc.descripcion}</p>}
+
+                <div className="doc-meta-info">
+                  <span><strong>Rev:</strong> {doc.revision || 'N/A'}</span>
+                  <span><strong>Tipo:</strong> {doc.tipo_documento.replace('_', ' ').toUpperCase()}</span>
+                  {doc.n_paginas != null && <span><strong>Págs:</strong> {doc.n_paginas}</span>}
+                </div>
+
+                {doc.estado_procesamiento === 'error' && doc.error_detalle && (
+                  <div style={{ color: '#f87171', fontSize: '0.8rem', marginBottom: '8px' }}>{doc.error_detalle}</div>
+                )}
+
+                <div className="doc-date">
+                  Subido el: {new Date(doc.creado_en).toLocaleString('es-CL')}
+                </div>
+              </div>
+
+              <div className="doc-card-footer">
+                {(doc.estado_procesamiento === 'pendiente' || doc.estado_procesamiento === 'error') && (
+                  <button
+                    className="btn btn-action btn-ia"
+                    onClick={() => handleProcesarIA(doc.id)}
+                    disabled={procesandoId !== null}
+                  >
+                    {procesandoId === doc.id ? 'Procesando…' : '✨ Procesar con Gemini IA'}
+                  </button>
+                )}
+                {procesandoId === doc.id && (
+                  <div className="loader-container" style={{ marginTop: '8px' }}>
+                    <div className="spinner"></div>
+                    <span>Gemini está leyendo el documento…</span>
+                  </div>
+                )}
+                {doc.estado_procesamiento === 'lote_generado' && (
+                  <button
+                    className="btn btn-action btn-success"
+                    onClick={() => onSelectLote(doc.id)}
+                  >
+                    👁️ Revisar y Aprobar Cambios
+                  </button>
+                )}
+                {doc.estado_procesamiento === 'completado' && (
+                  <span className="success-text">✓ Datos aplicados al Catálogo</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {mostrarModal && (
         <div className="modal-overlay">
           <div className="modal-card">
@@ -224,19 +236,19 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
             <form onSubmit={handleSubir}>
               <div className="form-group">
                 <label>Título del Documento</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Ej: Especificación Técnica de Materiales de Cañerías"
                   value={nuevoTitulo}
                   onChange={(e) => setNuevoTitulo(e.target.value)}
-                  required 
+                  required
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Tipo de Documento</label>
-                  <select 
+                  <select
                     value={nuevoTipo}
                     onChange={(e) => setNuevoTipo(e.target.value as Documento['tipo_documento'])}
                   >
@@ -247,11 +259,11 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                     <option value="line_list">Line List (PDF)</option>
                   </select>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Revisión</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Ej: A, 0, 1"
                     value={nuevaRev}
                     onChange={(e) => setNuevaRev(e.target.value)}
@@ -261,7 +273,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
               <div className="form-group">
                 <label>Descripción / Notas</label>
-                <textarea 
+                <textarea
                   placeholder="Agregue comentarios sobre el origen o cambios del documento..."
                   value={nuevaDesc}
                   onChange={(e) => setNuevaDesc(e.target.value)}
@@ -271,10 +283,22 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
               <div className="form-group">
                 <label>Archivo PDF (Storage Privado)</label>
-                <div className="file-dropzone">
+                <div
+                  className="file-dropzone"
+                  onClick={() => document.getElementById('doc-file-input')?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) setArchivo(f); }}
+                >
                   <div className="dropzone-icon">📥</div>
-                  <p>Arrastra tu PDF aquí o <strong>haz clic para examinar</strong></p>
-                  <span className="dropzone-sub">Solo archivos PDF de ingeniería (Máx. 25MB)</span>
+                  <p>{archivo ? archivo.name : <>Arrastra tu PDF aquí o <strong>haz clic para examinar</strong></>}</p>
+                  <span className="dropzone-sub">Solo archivos PDF de ingeniería</span>
+                  <input
+                    id="doc-file-input"
+                    type="file"
+                    accept="application/pdf"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+                  />
                 </div>
               </div>
 
@@ -282,7 +306,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                 <button type="button" className="btn btn-secondary" onClick={() => setMostrarModal(false)} disabled={subiendo}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={subiendo}>
+                <button type="submit" className="btn btn-primary" disabled={subiendo || !archivo}>
                   {subiendo ? 'Subiendo PDF...' : 'Subir Documento'}
                 </button>
               </div>
