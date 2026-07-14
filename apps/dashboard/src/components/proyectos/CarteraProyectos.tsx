@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { NuevoProyectoModal } from './NuevoProyectoModal';
-import { fontDisplay } from '../../theme';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
 
 export interface ProyectoKpis {
   id: string;
@@ -20,24 +21,25 @@ export interface ProyectoKpis {
 }
 
 const INDUSTRIA_META: Record<ProyectoKpis['industria'], { label: string; icon: string; color: string; bg: string }> = {
-  mineria: { label: 'Minería', icon: '⛏️', color: '#f97316', bg: 'rgba(249, 115, 22, 0.12)' },
-  refineria: { label: 'Refinería', icon: '🛢️', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
-  celulosa: { label: 'Celulosa', icon: '🌲', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
+  mineria: { label: 'Minería', icon: '⛏️', color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  refineria: { label: 'Refinería', icon: '🛢️', color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+  celulosa: { label: 'Celulosa', icon: '🌲', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
 };
 
 const ESTADO_META: Record<string, { label: string; color: string }> = {
-  activo: { label: 'Activo', color: '#22c55e' },
-  en_pausa: { label: 'En pausa', color: '#eab308' },
-  cerrado: { label: 'Cerrado', color: '#64748b' },
-  borrador: { label: 'Borrador', color: '#94a3b8' },
+  activo: { label: 'Activo', color: 'text-green-500' },
+  en_pausa: { label: 'En pausa', color: 'text-yellow-500' },
+  cerrado: { label: 'Cerrado', color: 'text-slate-500' },
+  borrador: { label: 'Borrador', color: 'text-slate-400' },
 };
 
 interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
   onAbrirCubicador: (proyectoId: string) => void;
+  esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, esGerencia }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,13 +70,42 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     fetchProyectos();
   };
 
+  const handleEliminarProyecto = async (proyectoId: string, codigo: string) => {
+    const input = window.prompt(
+      `Estás a punto de eliminar permanentemente el proyecto ${codigo} y todos sus datos en cascada.\n\n` +
+      `Para confirmar esta acción irreversible, por favor escribe el nombre del proyecto (${codigo}) a continuación:`
+    );
+    
+    if (input !== codigo) {
+      if (input !== null) {
+        alert('El nombre ingresado no coincide. Eliminación cancelada.');
+      }
+      return;
+    }
+    
+    setLoading(true);
+    const { data, error: err } = await supabase.from('proyectos').delete().eq('id', proyectoId).select();
+    
+    if (err) {
+      alert(`Error al eliminar: ${err.message}`);
+      setLoading(false);
+    } else if (!data || data.length === 0) {
+      alert('⚠️ No se eliminó nada. Esto ocurre porque la Base de Datos bloqueó la acción (RLS).\n\nAsegúrate de haber ejecutado el script SQL de la migración 011 en el panel de Supabase para habilitar el borrado.');
+      setLoading(false);
+    } else {
+      setSeleccionado(null);
+      fetchProyectos();
+      alert(`El proyecto ${codigo} ha sido eliminado permanentemente.`);
+    }
+  };
+
   const pctAvance = (p: ProyectoKpis) =>
     p.n_juntas > 0 ? Math.round((p.n_juntas_ejecutadas / p.n_juntas) * 100) : 0;
 
   // ─── Panel drill-down de un proyecto ───
   if (seleccionado) {
     const meta = INDUSTRIA_META[seleccionado.industria];
-    const estado = ESTADO_META[seleccionado.estado] ?? { label: seleccionado.estado, color: '#94a3b8' };
+    const estado = ESTADO_META[seleccionado.estado] ?? { label: seleccionado.estado, color: 'text-slate-400' };
     const kpis = [
       { label: 'Líneas', valor: seleccionado.n_lineas },
       { label: 'Isométricos', valor: seleccionado.n_isos },
@@ -85,278 +116,166 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     ];
 
     return (
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
+      <div className="max-w-6xl mx-auto p-8">
         <button
           onClick={() => setSeleccionado(null)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#38bdf8',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            padding: 0,
-            marginBottom: '20px',
-          }}
+          className="text-accent font-semibold text-sm hover:underline mb-6 flex items-center gap-2"
         >
           ← Volver a la cartera
         </button>
 
-        <div style={{
-          backgroundColor: '#1e293b',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '16px',
-          padding: '32px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <Card className="p-8">
+          <div className="flex flex-wrap justify-between items-start gap-6">
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc' }}>{seleccionado.codigo}</h1>
-                <span style={{
-                  backgroundColor: meta.bg,
-                  color: meta.color,
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                }}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold text-white m-0">{seleccionado.codigo}</h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${meta.bg} ${meta.color}`}>
                   {meta.icon} {meta.label}
                 </span>
-                <span style={{ color: estado.color, fontSize: '0.85rem', fontWeight: 600 }}>
+                <span className={`text-sm font-semibold ${estado.color}`}>
                   ● {estado.label}
                 </span>
               </div>
-              <p style={{ color: '#94a3b8', margin: '8px 0 0 0', fontSize: '1.05rem' }}>{seleccionado.nombre}</p>
-              <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
+              <p className="text-muted text-lg mt-3">{seleccionado.nombre}</p>
+              <p className="text-slate-500 text-sm mt-1">
                 Mandante: {seleccionado.mandante ?? '—'}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
+            <div className="flex gap-3">
+              <Button
+                variant="primary"
                 onClick={() => onAbrirCubicador(seleccionado.id)}
-                style={{
-                  background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
               >
                 📊 Importar Cubicación
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => onAbrirIngesta(seleccionado.id)}
-                style={{
-                  background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
               >
                 ✨ Ingesta Documental IA
-              </button>
+              </Button>
+              {esGerencia && (
+                <Button
+                  variant="danger"
+                  onClick={() => handleEliminarProyecto(seleccionado.id, seleccionado.codigo)}
+                  title="Eliminar proyecto permanentemente"
+                >
+                  🗑️ Eliminar
+                </Button>
+              )}
             </div>
           </div>
 
           {/* Avance físico de juntas */}
-          <div style={{ marginTop: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ color: '#cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}>Avance físico (juntas ejecutadas)</span>
-              <span style={{ color: '#38bdf8', fontWeight: 700 }}>{pctAvance(seleccionado)}%</span>
+          <div className="mt-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-slate-300 text-sm font-semibold">Avance físico (juntas ejecutadas)</span>
+              <span className="text-accent font-bold">{pctAvance(seleccionado)}%</span>
             </div>
-            <div style={{ height: '10px', backgroundColor: '#0f172a', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${pctAvance(seleccionado)}%`,
-                background: 'linear-gradient(90deg, #0ea5e9, #6366f1)',
-                borderRadius: '5px',
-                transition: 'width 0.5s',
-              }} />
+            <div className="h-2.5 bg-background rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-accent transition-all duration-500" 
+                style={{ width: `${pctAvance(seleccionado)}%` }}
+              />
             </div>
           </div>
 
           {/* KPIs */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '16px',
-            marginTop: '28px',
-          }}>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8">
             {kpis.map((k) => (
-              <div key={k.label} style={{
-                backgroundColor: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: '12px',
-                padding: '20px 16px',
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc' }}>
+              <div key={k.label} className="bg-background border border-border rounded-xl p-5 text-center">
+                <div className="text-2xl font-extrabold text-white">
                   {k.valor.toLocaleString('es-CL')}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>{k.label}</div>
+                <div className="text-xs text-muted mt-1.5 font-medium">{k.label}</div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   // ─── Vista de cartera ───
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
+    <div className="max-w-6xl mx-auto p-8">
+      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
-          <h1 style={{ margin: 0, fontSize: '3rem', color: '#f8fafc', fontFamily: fontDisplay, fontWeight: 700, letterSpacing: '-0.02em' }}>Proyectos</h1>
-          <p style={{ color: '#94a3b8', margin: '6px 0 0 0', fontSize: '0.95rem' }}>
+          <h1 className="text-4xl text-white font-display font-bold tracking-tight">Proyectos</h1>
+          <p className="text-muted text-base mt-2">
             {proyectos.length} proyecto{proyectos.length !== 1 ? 's' : ''} visible{proyectos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setMostrarWizard(true)}
-          style={{
-            background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(14, 165, 233, 0.3)',
-          }}
-        >
+        <Button variant="primary" onClick={() => setMostrarWizard(true)}>
           + Nuevo Proyecto
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div style={{
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid rgba(239, 68, 68, 0.2)',
-          borderRadius: '8px',
-          padding: '12px 16px',
-          color: '#f87171',
-          fontSize: '0.875rem',
-          marginBottom: '20px',
-        }}>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-500 text-sm mb-6">
           ⚠️ Error al cargar la cartera: {error}
         </div>
       )}
 
       {loading ? (
-        <div style={{ color: '#94a3b8', textAlign: 'center', padding: '60px 0' }}>Cargando cartera…</div>
+        <div className="text-muted text-center py-16">Cargando cartera…</div>
       ) : proyectos.length === 0 && !error ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '80px 24px',
-          backgroundColor: '#1e293b',
-          borderRadius: '16px',
-          border: '1px dashed #334155',
-        }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🗂️</div>
-          <h3 style={{ color: '#f8fafc', margin: '0 0 8px 0' }}>No hay proyectos visibles</h3>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>
+        <div className="text-center py-20 px-6 bg-panel rounded-2xl border border-dashed border-border">
+          <div className="text-4xl mb-4">🗂️</div>
+          <h3 className="text-white text-xl font-semibold mb-2">No hay proyectos visibles</h3>
+          <p className="text-muted text-sm m-0">
             Crea tu primer proyecto o pide a un administrador que te agregue como miembro.
           </p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '20px',
-        }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {proyectos.map((p) => {
             const meta = INDUSTRIA_META[p.industria];
-            const estado = ESTADO_META[p.estado] ?? { label: p.estado, color: '#94a3b8' };
+            const estado = ESTADO_META[p.estado] ?? { label: p.estado, color: 'text-slate-400' };
             return (
-              <div
+              <Card
                 key={p.id}
                 onClick={() => setSeleccionado(p)}
-                style={{
-                  backgroundColor: 'rgba(30, 41, 59, 0.8)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s, border-color 0.2s',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.borderColor = meta.color;
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                }}
+                className="p-6 cursor-pointer hover:-translate-y-1 hover:border-accent transition-all bg-panel/80 backdrop-blur-md"
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{
-                    backgroundColor: meta.bg,
-                    color: meta.color,
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                  }}>
+                <div className="flex justify-between items-center mb-4">
+                  <span className={`px-3 py-1 rounded-full text-[0.75rem] font-bold ${meta.bg} ${meta.color}`}>
                     {meta.icon} {meta.label}
                   </span>
-                  <span style={{ color: estado.color, fontSize: '0.78rem', fontWeight: 600 }}>
+                  <span className={`text-[0.78rem] font-semibold ${estado.color}`}>
                     ● {estado.label}
                   </span>
                 </div>
 
-                <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem' }}>{p.codigo}</h3>
-                <p style={{
-                  color: '#94a3b8',
-                  margin: '4px 0 0 0',
-                  fontSize: '0.88rem',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
+                <h3 className="text-white text-lg font-bold m-0">{p.codigo}</h3>
+                <p className="text-muted text-sm mt-1 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
                   {p.nombre}
                 </p>
-                <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '0.8rem' }}>
+                <p className="text-slate-500 text-xs mt-1 mb-0">
                   {p.mandante ?? 'Sin mandante'}
                 </p>
 
                 {/* Avance */}
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px' }}>
-                    <span style={{ color: '#94a3b8' }}>Avance juntas</span>
-                    <span style={{ color: '#38bdf8', fontWeight: 700 }}>{pctAvance(p)}%</span>
+                <div className="mt-5">
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-muted">Avance juntas</span>
+                    <span className="text-accent font-bold">{pctAvance(p)}%</span>
                   </div>
-                  <div style={{ height: '6px', backgroundColor: '#0f172a', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${pctAvance(p)}%`,
-                      background: 'linear-gradient(90deg, #0ea5e9, #6366f1)',
-                    }} />
+                  <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-accent transition-all duration-500" 
+                      style={{ width: `${pctAvance(p)}%` }}
+                    />
                   </div>
                 </div>
 
                 {/* Mini KPIs */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginTop: '16px',
-                  paddingTop: '14px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                  fontSize: '0.8rem',
-                  color: '#94a3b8',
-                }}>
-                  <span><strong style={{ color: '#e2e8f0' }}>{p.n_lineas.toLocaleString('es-CL')}</strong> líneas</span>
-                  <span><strong style={{ color: '#e2e8f0' }}>{p.n_spools.toLocaleString('es-CL')}</strong> spools</span>
-                  <span><strong style={{ color: '#e2e8f0' }}>{p.n_juntas.toLocaleString('es-CL')}</strong> juntas</span>
+                <div className="flex justify-between mt-5 pt-3.5 border-t border-white/5 text-xs text-muted">
+                  <span><strong className="text-slate-200">{p.n_lineas.toLocaleString('es-CL')}</strong> líneas</span>
+                  <span><strong className="text-slate-200">{p.n_spools.toLocaleString('es-CL')}</strong> spools</span>
+                  <span><strong className="text-slate-200">{p.n_juntas.toLocaleString('es-CL')}</strong> juntas</span>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

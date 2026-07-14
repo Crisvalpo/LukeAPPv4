@@ -1,7 +1,24 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { colors, fontDisplay, fontBody, section } from '../../theme';
+
+const colors = {
+  bg: '#080b14',
+  bgPanel: '#0d1220',
+  bgCard: 'rgba(255, 255, 255, 0.03)',
+  border: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  text: '#e8ecf5',
+  textMuted: '#8b94a8',
+  textFaint: '#5b6478',
+  accentSky: '#38bdf8',
+  accentIndigo: '#818cf8',
+  accentGradient: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
+  statusPending: '#5b6478',
+  statusPrefab: '#f59e0b',
+  statusTransit: '#38bdf8',
+  statusInstalled: '#34d399',
+};
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,12 +43,14 @@ export function HeroIsometric() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const scrollTextRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const svg = svgRef.current;
     const text = textRef.current;
+    const scrollText = scrollTextRef.current;
     const container = containerRef.current;
-    if (!svg || !text || !container) return;
+    if (!svg || !text || !scrollText || !container) return;
 
     const paths = svg.querySelectorAll<SVGPathElement>('.iso-line');
     paths.forEach((path) => {
@@ -50,7 +69,7 @@ export function HeroIsometric() {
       opacity: 0.2,
       scrollTrigger: { trigger: container, start: 'top top', end: 'bottom top', scrub: 1 },
     });
-    gsap.to(text, {
+    gsap.to(scrollText, {
       y: -50,
       opacity: 0,
       scrollTrigger: { trigger: container, start: 'top top', end: '+=260', scrub: true },
@@ -64,20 +83,14 @@ export function HeroIsometric() {
   return (
     <div
       ref={containerRef}
+      className="h-screen w-full flex flex-col relative overflow-hidden"
       style={{
-        height: '100vh',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
         background: `radial-gradient(ellipse 80% 55% at 50% 35%, rgba(56,189,248,0.06), transparent 70%), ${colors.bg}`,
       }}
     >
       <div
+        className="absolute inset-0 pointer-events-none"
         style={{
-          position: 'absolute',
-          inset: 0,
           backgroundImage:
             'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
           backgroundSize: '56px 56px',
@@ -85,27 +98,29 @@ export function HeroIsometric() {
         }}
       />
 
-      <div style={{ flex: '0 0 auto', paddingTop: 'clamp(120px, 15vh, 180px)' }}>
-        <div ref={textRef} style={{ position: 'relative', zIndex: 10, textAlign: 'center', opacity: 0, transform: 'translateY(24px)', ...section, padding: '0 24px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '999px', border: `1px solid ${colors.border}`, background: colors.bgCard, marginBottom: '26px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors.accentSky, boxShadow: `0 0 8px ${colors.accentSky}` }} />
-            <span style={{ fontFamily: fontBody, fontSize: '0.78rem', fontWeight: 600, color: colors.textMuted, letterSpacing: '0.02em' }}>
+      <div className="flex-none pt-[clamp(120px,15vh,180px)]">
+        <div ref={scrollTextRef}>
+          <div ref={textRef} className="relative z-10 text-center max-w-7xl mx-auto px-6 opacity-0 translate-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-border bg-card mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_theme(colors.accent)]" />
+            <span className="font-sans text-xs font-semibold text-muted tracking-wide">
               Minería · Refinería · Celulosa
             </span>
           </div>
 
-          <h1 style={{ fontFamily: fontDisplay, fontSize: 'clamp(2.4rem, 5.2vw, 3.8rem)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.08, color: colors.text, margin: '0 0 18px 0' }}>
+          <h1 className="font-display text-[clamp(2.4rem,5.2vw,3.8rem)] font-bold tracking-tight leading-[1.08] text-foreground mb-4">
             Trazabilidad de montaje,
             <br />
-            <span style={{ background: colors.accentGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span className="text-accent">
               de la ingeniería a terreno
             </span>
           </h1>
-          <p style={{ fontFamily: fontBody, fontSize: '1.08rem', color: colors.textMuted, maxWidth: '540px', margin: '0 auto', lineHeight: 1.6 }}>
+          <p className="font-sans text-lg text-muted max-w-[540px] mx-auto leading-relaxed">
             Line lists, MTO, especificaciones técnicas y avance físico de juntas — un solo sistema, con IA para extraer datos de tus documentos de ingeniería.
           </p>
         </div>
       </div>
+    </div>
 
       <div style={{ flex: '1 1 auto', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg ref={svgRef} width="560" height="420" viewBox="50 200 400 320" fill="none" style={{ opacity: 0.95, overflow: 'visible' }}>
@@ -158,16 +173,16 @@ export function HeroIsometric() {
           <g className="iso-tag" opacity="0">
             <line x1={P1.x} y1={P1.y - 17} x2={P1.x} y2={P1.y - 55} stroke={colors.textFaint} strokeWidth="1" strokeDasharray="2 3" />
             <rect x={P1.x - 78} y={P1.y - 82} width="156" height="30" rx="5" fill={colors.bgPanel} stroke={colors.border} />
-            <text x={P1.x} y={P1.y - 62} textAnchor="middle" fontFamily={fontBody} fontSize="12" fontWeight="600" fill={colors.textMuted} letterSpacing="0.5">
+            <text x={P1.x} y={P1.y - 62} textAnchor="middle" className="font-sans text-xs font-semibold fill-muted tracking-wider">
               L-2205 · 6&quot; · A1B
             </text>
           </g>
         </svg>
       </div>
 
-      <div style={{ position: 'absolute', bottom: '28px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', opacity: 0.5, zIndex: 5 }}>
-        <span style={{ fontFamily: fontBody, fontSize: '0.68rem', color: colors.textFaint, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Scroll</span>
-        <div style={{ width: '1px', height: '24px', background: `linear-gradient(${colors.textFaint}, transparent)` }} />
+      <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-50 z-10">
+        <span className="font-sans text-[0.68rem] text-faint tracking-widest uppercase">Scroll</span>
+        <div className="w-px h-6 bg-gradient-to-b from-faint to-transparent" />
       </div>
     </div>
   );

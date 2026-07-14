@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
 import { HeroIsometric } from './HeroIsometric';
 import { PipelineCanvas3D } from './PipelineCanvas3D';
-import { FeaturesSection } from './FeaturesSection';
 import { CTASection } from './CTASection';
-import { colors, fontBody } from '../../theme';
+import { Button } from '../ui/Button';
 
 export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
   const [scrolled, setScrolled] = useState(false);
@@ -31,51 +30,22 @@ export function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
   }, []);
 
   return (
-    <div style={{ background: colors.bg, color: colors.text, fontFamily: fontBody }}>
+    <div className="bg-background text-foreground font-sans">
       <header
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          padding: '18px 48px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          zIndex: 50,
-          background: scrolled ? 'rgba(8, 11, 20, 0.75)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: scrolled ? `1px solid ${colors.border}` : '1px solid transparent',
-          transition: 'background 0.3s ease, border-color 0.3s ease',
-        }}
+        className={`fixed top-0 left-0 w-full px-12 py-4 flex justify-between items-center z-50 transition-all duration-300 ${
+          scrolled ? 'bg-panel/75 backdrop-blur-md border-b border-border' : 'bg-transparent border-b border-transparent'
+        }`}
       >
-        <div style={{ fontFamily: fontBody, fontSize: '1.15rem', fontWeight: 800, color: colors.text, letterSpacing: '-0.01em' }}>
-          LukeAPP <span style={{ color: colors.accentSky }}>v4</span>
+        <div className="font-display text-xl font-extrabold tracking-tight">
+          LukeAPP <span className="text-accent">v4</span>
         </div>
-        <button
-          onClick={onLoginClick}
-          style={{
-            fontFamily: fontBody,
-            background: 'rgba(255,255,255,0.06)',
-            border: `1px solid ${colors.borderStrong}`,
-            color: colors.text,
-            padding: '9px 22px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '0.88rem',
-            transition: 'background 0.2s ease, border-color 0.2s ease',
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = colors.accentSky; }}
-          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = colors.borderStrong; }}
-        >
+        <Button variant="outline" size="sm" onClick={onLoginClick}>
           Iniciar Sesión
-        </button>
+        </Button>
       </header>
 
       <HeroIsometric />
       <PipelineCanvas3D />
-      <FeaturesSection />
       <CTASection onLoginClick={onLoginClick} />
     </div>
   );

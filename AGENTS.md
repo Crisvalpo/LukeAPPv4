@@ -1,7 +1,7 @@
 # LukeAPP v4 — Reglas para agentes de desarrollo
 
 ## Qué es este proyecto
-Plataforma multi-proyecto de trazabilidad de montaje industrial (piping y mecánica) para EIMISA: ingeniería → prefabricación → QA/QC → logística → montaje. **Desarrollo greenfield**: se construye todo desde cero en este repo. Los sistemas anteriores NO se integran ni se migra su código — son únicamente **referencia funcional** de lo que la plataforma debe lograr:
+Plataforma multi-proyecto de trazabilidad de montaje industrial (piping y mecánica): ingeniería → prefabricación → QA/QC → logística → montaje. **Desarrollo greenfield**: se construye todo desde cero en este repo. Los sistemas anteriores NO se integran ni se migra su código — son únicamente **referencia funcional** de lo que la plataforma debe lograr:
 
 - **v1 AppSheet + Excel** (carpeta OneDrive `EIMI00413 - Andina - ...`): define el modelo de entidades probado en terreno (CAT/LIST/LOG/REG/REL/DOC), los roles y los flujos. Es además la fuente de datos del proyecto piloto.
 - **`Crisvalpo/andina-dashboard`** (GitHub): define capacidades esperadas — dashboard de avance, visor BIM 3D vinculado a spools, bot WhatsApp de reporte, escaneo QR, guías de despacho. Se reimplementan en v4 cuando el roadmap lo indique; no se copia código.
@@ -11,9 +11,14 @@ Documentos: `LukeAPP v4 - Arquitectura Multi-Proyecto.docx` (decisiones) · `INS
 ## Stack (fijo, no proponer alternativas)
 - **Datos**: Supabase (PostgreSQL + Auth + Storage + RLS). Migraciones SQL versionadas en `supabase/migrations/`. Despliegue objetivo: instancia self-hosted en `lukeserver` (Docker), esquema dedicado; desarrollo con `supabase start` local.
 - **Sincronización offline**: PowerSync (SQLite local en cliente, sync rules por proyecto/rol). Requiere replicación lógica en Postgres.
-- **Frontend**: monorepo React + TypeScript + Vite. `apps/dashboard` (web online, multi-proyecto), `apps/terreno` (PWA offline-first con PowerSync Web SDK).
+- **Frontend**: monorepo React + TypeScript + Vite + Tailwind CSS. `apps/dashboard` (web online, multi-proyecto), `apps/terreno` (PWA offline-first con PowerSync Web SDK).
 - **Analítica externa**: Power BI directo a Postgres (solo vistas `bi_*`).
 - **ETL**: Python (openpyxl/pandas) para la carga del piloto 413 y el parser del cubicador.
+
+## Reglas de Interfaz y Estilos (UI)
+1. **Tailwind CSS obligatorio**: Todo el estilo debe manejarse con clases utilitarias de Tailwind. Cero estilos en línea (`style={{}}`) y cero archivos `.css` personalizados.
+2. **Estética Industrial Seria**: Plataforma corporativa para construcción/montaje. No uses efectos de brillo desmesurado, estrellitas, glassmorphism excesivo ni diseños lúdicos. Interfaz sobria, de alto contraste y altamente funcional orientada al dato.
+3. **Componentes Base**: Centraliza átomos UI (Botones, Inputs, Cards) en `src/components/ui/` construidos con Tailwind para mantener consistencia.
 
 ## Reglas de datos (inviolables)
 1. **Toda tabla operativa lleva `proyecto_id`** (FK a `proyectos`). IDs de negocio (`id_linea`, `id_iso`, `id_spool`, `id_junta`, …) únicos **por proyecto**: `UNIQUE (proyecto_id, id_negocio)`. Nunca únicos globales.

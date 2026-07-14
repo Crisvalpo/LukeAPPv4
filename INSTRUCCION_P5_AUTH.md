@@ -222,7 +222,7 @@ Visible en el header solo si `perfil.puede_administrar_accesos`. Nueva `Vista = 
 
 ## Casos de prueba sugeridos
 
-1. Registrar `test.pendiente@eimisa.cl` → confirmar fila pendiente + gate + RLS a cero.
+1. Registrar `test.pendiente@empresa.cl` → confirmar fila pendiente + gate + RLS a cero.
 2. Aprobar a EIMI00417 con rol OT → verificar membresía y acceso solo a ese proyecto.
 3. Aprobar a un segundo usuario como GERENCIA → `acceso_global=true`, ve toda la cartera.
 4. Rechazar un tercero con motivo → pantalla de rechazo.

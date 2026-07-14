@@ -9,6 +9,7 @@ import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
+import { Button } from './components/ui/Button';
 
 // three.js/gsap pesan ~1.3MB — se cargan solo cuando realmente se muestra la
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
@@ -113,7 +114,7 @@ function App() {
 
   if (!sessionCargada) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', color: '#94a3b8' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted">
         Cargando…
       </div>
     );
@@ -126,24 +127,15 @@ function App() {
   if (!session) {
     if (showLogin) {
       return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#0f172a' }}>
-          <button 
+        <div className="relative w-full min-h-screen bg-background">
+          <Button 
+            variant="ghost" 
+            size="sm"
             onClick={() => setShowLogin(false)} 
-            style={{ 
-              position: 'absolute', 
-              top: '20px', 
-              left: '20px', 
-              zIndex: 100, 
-              background: 'rgba(255,255,255,0.1)', 
-              color: 'white', 
-              border: 'none', 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
-              cursor: 'pointer' 
-            }}
+            className="absolute top-5 left-5 z-[100]"
           >
             ← Volver al Inicio
-          </button>
+          </Button>
           <Login avisoInicial={avisoLogin} />
         </div>
       );
@@ -151,7 +143,7 @@ function App() {
     return (
       <Suspense
         fallback={
-          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#080b14', color: '#8b94a8' }}>
+          <div className="min-h-screen flex items-center justify-center bg-background text-muted">
             Cargando…
           </div>
         }
@@ -163,7 +155,7 @@ function App() {
 
   if (!perfilCargado) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', color: '#94a3b8' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted">
         Cargando…
       </div>
     );
@@ -182,96 +174,54 @@ function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
 
       {/* Barra de Navegación */}
-      <header style={{
-        height: '64px',
-        background: 'rgba(30, 41, 59, 0.8)',
-        backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 24px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <header className="h-16 bg-panel/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-50">
+        <div className="flex items-center gap-4">
           <div
             onClick={handleBackToCartera}
-            style={{
-              fontSize: '1.4rem',
-              fontWeight: 800,
-              background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              cursor: 'pointer'
-            }}
+            className="text-2xl font-extrabold font-display cursor-pointer tracking-tight"
           >
-            LukeAPP v4
+            <span className="text-white">LukeAPP</span>{' '}
+            <span className="text-accent">v4</span>
           </div>
           {vista !== 'cartera' && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleBackToCartera}
-              style={{
-                background: 'none',
-                border: '1px solid #334155',
-                color: '#94a3b8',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '6px 14px',
-                borderRadius: '6px'
-              }}
             >
               ← Cartera
-            </button>
+            </Button>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="flex items-center gap-4">
           {perfil?.puede_administrar_accesos && (
-            <button
+            <Button
+              variant={vista === 'solicitudes' ? 'primary' : 'outline'}
+              size="sm"
               onClick={() => setVista('solicitudes')}
-              style={{
-                background: vista === 'solicitudes' ? 'rgba(56, 189, 248, 0.15)' : 'none',
-                border: '1px solid #334155',
-                color: '#38bdf8',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '6px 14px',
-                borderRadius: '6px'
-              }}
             >
               Solicitudes
-            </button>
+            </Button>
           )}
-          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{session.user.email}</span>
-          <button
+          <span className="text-muted text-sm">{session.user.email}</span>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleLogout}
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid #334155',
-              color: '#cbd5e1',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              padding: '6px 14px',
-              borderRadius: '6px'
-            }}
           >
             Salir
-          </button>
+          </Button>
         </div>
       </header>
 
       {/* Contenido Principal */}
-      <main style={{ flexGrow: 1 }}>
+      <main className="flex-grow">
         {vista === 'cartera' && (
-          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} onAbrirCubicador={handleAbrirCubicador} />
+          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} onAbrirCubicador={handleAbrirCubicador} esGerencia={perfil?.acceso_global ?? false} />
         )}
 
         {vista === 'solicitudes' && perfil?.puede_administrar_accesos && (

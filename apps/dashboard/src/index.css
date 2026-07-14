@@ -1,16 +1,9 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  color-scheme: dark;
-}
-
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #0f172a;
-  color: #e2e8f0;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-accent/30;
+  }
 }

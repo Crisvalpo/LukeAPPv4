@@ -1,6 +1,6 @@
 # LukeAPP v4 — Arquitectura Multi-Proyecto
 
-Plataforma de trazabilidad de montaje industrial (piping y mecánica) para EIMISA.
+Plataforma de trazabilidad de montaje industrial (piping y mecánica).
 
 Ver `LukeAPP v4 - Arquitectura Multi-Proyecto.docx` para el documento completo.
 

@@ -192,7 +192,7 @@ def run_migration(conn, dry_run=True):
     res = cur.fetchone()
     if not res:
         cur.execute(
-            "INSERT INTO lukeapp.empresas (nombre, rut, tipo) VALUES ('EIMISA', '76111222-3', 'contratista') RETURNING id"
+            "INSERT INTO lukeapp.empresas (nombre, rut, tipo) VALUES ('Empresa Contratista', '76111222-3', 'contratista') RETURNING id"
         )
         emp_id = cur.fetchone()[0]
     else:
