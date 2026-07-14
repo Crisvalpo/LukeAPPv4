@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { Login } from './components/auth/Login';
@@ -11,6 +12,7 @@ import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
+import { HeaderActionsContext } from './hooks/useHeaderActions';
 
 // three.js/gsap pesan ~1.3MB — se cargan solo cuando realmente se muestra la
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
@@ -31,6 +33,7 @@ function App() {
   const [sessionCargada, setSessionCargada] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [menuConfigAbierto, setMenuConfigAbierto] = useState(false);
+  const [headerActions, setHeaderActions] = useState<ReactNode>(null);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [avisoLogin, setAvisoLogin] = useState<string | null>(null);
 
@@ -213,11 +216,13 @@ function App() {
   }
 
   return (
+    <HeaderActionsContext.Provider value={setHeaderActions}>
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
 
-      {/* Barra de Navegación */}
-      <header className="h-16 bg-panel/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
+      {/* Barra de Navegación: único lugar con botones de acción/navegación
+          de página — cada vista registra los suyos vía useHeaderActions(). */}
+      <header className="h-16 bg-panel/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-50 gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <div
             onClick={handleBackToCartera}
             className="text-2xl font-extrabold font-display cursor-pointer tracking-tight"
@@ -236,7 +241,11 @@ function App() {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
+          {headerActions}
+        </div>
+
+        <div className="flex items-center gap-4 shrink-0">
           {perfil?.puede_administrar_accesos && (
             <div className="relative">
               <Button
@@ -354,6 +363,7 @@ function App() {
         )}
       </main>
     </div>
+    </HeaderActionsContext.Provider>
   );
 }
 

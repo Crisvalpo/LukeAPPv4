@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
+import { Button } from '../ui/Button';
+import { useHeaderActions } from '../../hooks/useHeaderActions';
 import './documental.css';
 
 type TablaDestino = 'cat_fluido_servicio' | 'cat_clase_piping';
@@ -157,6 +159,12 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
 
   const seleccionada = filas.find((f) => f.id === seleccionadaId) ?? null;
 
+  useHeaderActions(
+    <Button variant="outline" size="sm" onClick={onBack}>
+      ← Volver a Biblioteca
+    </Button>
+  );
+
   if (cargando) {
     return (
       <div className="rev-section">
@@ -169,7 +177,6 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
     return (
       <div className="rev-section">
         <div className="rev-header">
-          <button className="btn btn-secondary btn-back" onClick={onBack}>← Volver a Biblioteca</button>
           <div><h2>Revisión de Extracción Asistida por IA</h2></div>
         </div>
         <p className="doc-subheader">Este documento todavía no tiene propuestas generadas.</p>
@@ -180,7 +187,6 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
   return (
     <div className="rev-section">
       <div className="rev-header">
-        <button className="btn btn-secondary btn-back" onClick={onBack}>← Volver a Biblioteca</button>
         <div>
           <h2>Revisión de Extracción Asistida por IA</h2>
           <p className="doc-subheader">Verifica los datos propuestos por Gemini antes de insertarlos en el catálogo del proyecto. (Documento: {docTitulo})</p>
@@ -232,8 +238,8 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
                   <div className="propuesta-item-key">Clave: <strong>{f.clave_natural ?? '—'}</strong></div>
                   {(loteActivo.estado === 'diff_listo') && (f.accion === 'nueva' || f.accion === 'modificada') && (
                     <div className="propuesta-item-actions">
-                      <button className="btn-pill btn-pill-approve" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, true); }}>✓ Aprobar</button>
-                      <button className="btn-pill btn-pill-reject" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, false); }}>✗ Rechazar</button>
+                      <button className="btn-pill btn-pill-approve" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, true); }}>Aprobar</button>
+                      <button className="btn-pill btn-pill-reject" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, false); }}>Rechazar</button>
                     </div>
                   )}
                 </div>
@@ -317,7 +323,7 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
             {aplicando ? 'Aplicando…' : `Aprobar y Aplicar (${loteActivo ? TABLA_LABEL[loteActivo.tabla_destino] : ''})`}
           </button>
         ) : (
-          <button className="btn btn-success btn-lg" onClick={handleFinalizar}>✓ Todo aplicado — Volver a Biblioteca</button>
+          <button className="btn btn-success btn-lg" onClick={handleFinalizar}>Todo aplicado — Volver a Biblioteca</button>
         )}
       </div>
     </div>

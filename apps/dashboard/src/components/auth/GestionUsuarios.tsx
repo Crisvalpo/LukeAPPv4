@@ -390,7 +390,7 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
                             resetMensajes();
                           }}
                         >
-                          ✓ Aprobar
+                          Aprobar
                         </Button>
                         <Button
                           variant="outline"
@@ -402,7 +402,7 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
                             resetMensajes();
                           }}
                         >
-                          ✕ Rechazar
+                          Rechazar
                         </Button>
                       </div>
                     </CardHeader>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { sanitizarNombreArchivo } from '../../lib/storagePath';
+import { Button } from '../ui/Button';
+import { useHeaderActions } from '../../hooks/useHeaderActions';
 import './documental.css';
 
 export interface Documento {
@@ -183,6 +185,12 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
     }
   };
 
+  useHeaderActions(
+    <Button variant="primary" size="sm" onClick={() => setMostrarModal(true)}>
+      + Subir Documento PDF
+    </Button>
+  );
+
   return (
     <div className="doc-section">
       <div className="doc-header">
@@ -190,9 +198,6 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
           <h2>Ingesta Documental con IA</h2>
           <p className="doc-subheader">Sube especificaciones y adendas en PDF para extraer clases de piping y fluidos con Gemini, y poblar catálogos con aprobación humana.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setMostrarModal(true)}>
-          <span className="icon">+</span> Subir Documento PDF
-        </button>
       </div>
 
       <form className="rag-search-bar" onSubmit={handleBuscar}>
@@ -203,11 +208,11 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
           onChange={(e) => setQuery(e.target.value)}
         />
         <button type="submit" className="btn btn-secondary" disabled={buscando || !query.trim()}>
-          {buscando ? 'Buscando…' : '🔍 Buscar'}
+          {buscando ? 'Buscando…' : 'Buscar'}
         </button>
         {resultados !== null && (
           <button type="button" className="btn btn-secondary" onClick={() => { setResultados(null); setQuery(''); }}>
-            ✕ Limpiar
+            Limpiar
           </button>
         )}
       </form>
@@ -280,7 +285,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                     onClick={() => handleProcesarIA(doc.id)}
                     disabled={procesandoId !== null}
                   >
-                    {procesandoId === doc.id ? 'Procesando…' : '✨ Procesar con Gemini IA'}
+                    {procesandoId === doc.id ? 'Procesando…' : 'Procesar con Gemini IA'}
                   </button>
                 )}
                 {procesandoId === doc.id && (
@@ -294,7 +299,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                     className="btn btn-action btn-success"
                     onClick={() => onSelectLote(doc.id)}
                   >
-                    👁️ Revisar y Aprobar Cambios
+                    Revisar y Aprobar Cambios
                   </button>
                 )}
                 {doc.estado_procesamiento === 'completado' && (

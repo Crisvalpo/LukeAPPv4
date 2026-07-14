@@ -345,8 +345,6 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                     const bgCol = active 
                       ? (ind === 'mineria' ? 'rgba(249, 115, 22, 0.1)' : ind === 'refineria' ? 'rgba(6, 182, 212, 0.1)' : 'rgba(16, 185, 129, 0.1)')
                       : '#0f172a';
-                    const icon = ind === 'mineria' ? '🟠' : ind === 'refineria' ? '🔵' : '🟢';
-                    
                     return (
                       <button
                         key={ind}
@@ -369,7 +367,6 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                           transition: 'all 0.2s'
                         }}
                       >
-                        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
                         {ind}
                       </button>
                     );
@@ -402,7 +399,7 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                 
                 <span style={{ color: '#64748b' }}>Industria:</span>
                 <span style={{ color: '#cbd5e1', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {industria === 'mineria' ? '🟠 Minería' : industria === 'refineria' ? '🔵 Refinería' : '🟢 Celulosa'}
+                  {industria === 'mineria' ? 'Minería' : industria === 'refineria' ? 'Refinería' : 'Celulosa'}
                 </span>
               </div>
 

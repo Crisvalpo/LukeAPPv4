@@ -411,8 +411,8 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                     <div className="propuesta-item-key">Clave: <strong>{f.clave_natural ?? '—'}</strong></div>
                     {(f.accion === 'nueva' || f.accion === 'modificada' || f.accion === 'ausente') && !f.error_detalle?.startsWith('CONFLICTO') && (
                       <div className="propuesta-item-actions">
-                        <button className="btn-pill btn-pill-approve" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, true); }}>✓ Aprobar</button>
-                        <button className="btn-pill btn-pill-reject" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, false); }}>✗ Rechazar</button>
+                        <button className="btn-pill btn-pill-approve" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, true); }}>Aprobar</button>
+                        <button className="btn-pill btn-pill-reject" onClick={(e) => { e.stopPropagation(); handleAprobarFila(f, false); }}>Rechazar</button>
                       </div>
                     )}
                   </div>
@@ -477,7 +477,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                 {aplicando ? 'Aplicando…' : 'Aprobar y Aplicar'}
               </button>
             ) : (
-              <button className="btn btn-success btn-lg" onClick={reiniciar}>✓ Aplicado — Importar otra planilla</button>
+              <button className="btn btn-success btn-lg" onClick={reiniciar}>Aplicado — Importar otra planilla</button>
             )}
           </div>
         </>

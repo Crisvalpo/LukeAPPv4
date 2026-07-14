@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient';
 import { NuevoProyectoModal } from './NuevoProyectoModal';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { useHeaderActions } from '../../hooks/useHeaderActions';
 
 export interface ProyectoKpis {
   id: string;
@@ -111,6 +112,36 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
   const pctAvance = (p: ProyectoKpis) =>
     p.n_juntas > 0 ? Math.round((p.n_juntas_ejecutadas / p.n_juntas) * 100) : 0;
 
+  useHeaderActions(
+    seleccionado ? (
+      <>
+        <Button variant="outline" size="sm" onClick={() => setSeleccionado(null)}>
+          ← Volver a Proyectos
+        </Button>
+        <Button variant="primary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
+          Importar Cubicación
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
+          Ingesta Documental IA
+        </Button>
+        {esGerencia && (
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleEliminarProyecto(seleccionado.id, seleccionado.codigo)}
+            title="Eliminar proyecto permanentemente"
+          >
+            Eliminar
+          </Button>
+        )}
+      </>
+    ) : esGerencia ? (
+      <Button variant="primary" size="sm" onClick={() => setMostrarWizard(true)}>
+        + Nuevo Proyecto
+      </Button>
+    ) : null
+  );
+
   // ─── Panel drill-down de un proyecto ───
   if (seleccionado) {
     const meta = INDUSTRIA_META[seleccionado.industria];
@@ -126,10 +157,6 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
 
     return (
       <div className="max-w-6xl mx-auto p-8">
-        <Button variant="outline" size="sm" className="mb-6" onClick={() => setSeleccionado(null)}>
-          ← Volver a Proyectos
-        </Button>
-
         <Card className="p-8">
           <div className="flex flex-wrap justify-between items-start gap-6">
             <div>
@@ -146,29 +173,6 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
               <p className="text-slate-500 text-sm mt-1">
                 Mandante: {seleccionado.mandante ?? '—'}
               </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="primary"
-                onClick={() => onAbrirCubicador(seleccionado.id)}
-              >
-                📊 Importar Cubicación
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => onAbrirIngesta(seleccionado.id)}
-              >
-                ✨ Ingesta Documental IA
-              </Button>
-              {esGerencia && (
-                <Button
-                  variant="danger"
-                  onClick={() => handleEliminarProyecto(seleccionado.id, seleccionado.codigo)}
-                  title="Eliminar proyecto permanentemente"
-                >
-                  🗑️ Eliminar
-                </Button>
-              )}
             </div>
           </div>
 
@@ -205,18 +209,11 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
   // ─── Vista de cartera ───
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-        <div>
-          <h1 className="text-4xl text-white font-display font-bold tracking-tight">Proyectos</h1>
-          <p className="text-muted text-base mt-2">
-            {proyectos.length} proyecto{proyectos.length !== 1 ? 's' : ''} visible{proyectos.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {esGerencia && (
-          <Button variant="primary" onClick={() => setMostrarWizard(true)}>
-            + Nuevo Proyecto
-          </Button>
-        )}
+      <div className="mb-8">
+        <h1 className="text-4xl text-white font-display font-bold tracking-tight">Proyectos</h1>
+        <p className="text-muted text-base mt-2">
+          {proyectos.length} proyecto{proyectos.length !== 1 ? 's' : ''} visible{proyectos.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
       {error && (
