@@ -65,6 +65,15 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     fetchProyectos();
   }, [fetchProyectos]);
 
+  // Un usuario con un único proyecto no gana nada viendo la lista de
+  // cartera — entra directo al detalle. GERENCIA siempre ve la cartera,
+  // incluso si hoy solo hay un proyecto (va a crecer).
+  useEffect(() => {
+    if (!esGerencia && !seleccionado && proyectos.length === 1) {
+      setSeleccionado(proyectos[0]);
+    }
+  }, [esGerencia, proyectos, seleccionado]);
+
   const handleProyectoCreado = () => {
     setMostrarWizard(false);
     fetchProyectos();
