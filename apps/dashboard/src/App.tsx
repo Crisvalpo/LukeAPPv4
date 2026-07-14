@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { Login } from './components/auth/Login';
@@ -9,6 +9,10 @@ import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
+
+// three.js/gsap pesan ~1.3MB — se cargan solo cuando realmente se muestra la
+// landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
+const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
 type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes';
 
@@ -23,6 +27,7 @@ interface Perfil {
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionCargada, setSessionCargada] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [avisoLogin, setAvisoLogin] = useState<string | null>(null);
 
@@ -97,6 +102,7 @@ function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setShowLogin(false);
     handleBackToCartera();
   };
 
@@ -118,7 +124,41 @@ function App() {
   }
 
   if (!session) {
-    return <Login avisoInicial={avisoLogin} />;
+    if (showLogin) {
+      return (
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', backgroundColor: '#0f172a' }}>
+          <button 
+            onClick={() => setShowLogin(false)} 
+            style={{ 
+              position: 'absolute', 
+              top: '20px', 
+              left: '20px', 
+              zIndex: 100, 
+              background: 'rgba(255,255,255,0.1)', 
+              color: 'white', 
+              border: 'none', 
+              padding: '8px 16px', 
+              borderRadius: '8px', 
+              cursor: 'pointer' 
+            }}
+          >
+            ← Volver al Inicio
+          </button>
+          <Login avisoInicial={avisoLogin} />
+        </div>
+      );
+    }
+    return (
+      <Suspense
+        fallback={
+          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#080b14', color: '#8b94a8' }}>
+            Cargando…
+          </div>
+        }
+      >
+        <LandingPage onLoginClick={() => setShowLogin(true)} />
+      </Suspense>
+    );
   }
 
   if (!perfilCargado) {
