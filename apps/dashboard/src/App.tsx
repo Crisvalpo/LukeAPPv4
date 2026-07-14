@@ -269,10 +269,15 @@ function App() {
           {(() => {
             const getRolYProyectoActivos = () => {
               if (!proyectoActivo) {
-                return {
-                  rol: perfil?.acceso_global ? 'GERENCIA' : '—',
-                  proyecto: 'Proyectos'
-                };
+                if (perfil?.acceso_global) {
+                  return { rol: 'GERENCIA', proyecto: 'Proyectos' };
+                }
+                // Con una sola membresía no hay ambigüedad: se muestra directo,
+                // sin esperar a que el usuario entre al proyecto.
+                if (membresias.length === 1) {
+                  return { rol: membresias[0].rol, proyecto: membresias[0].proyectos?.codigo ?? 'Proyectos' };
+                }
+                return { rol: '—', proyecto: 'Proyectos' };
               }
               const memActiva = membresias.find(m => m.proyecto_id === proyectoActivo);
               const rol = memActiva ? memActiva.rol : (perfil?.acceso_global ? 'GERENCIA' : '—');
@@ -287,7 +292,9 @@ function App() {
                     {session.user.email}
                   </span>
                   <span className="text-muted text-[10px] font-medium font-sans mt-0.5">
-                    {proyectoActivo ? `Proyecto: ${proyActivoText}` : 'Proyectos'}
+                    {proyectoActivo || (!perfil?.acceso_global && membresias.length === 1)
+                      ? `Proyecto: ${proyActivoText}`
+                      : 'Proyectos'}
                   </span>
                 </div>
                 <div className="h-8 w-px bg-border/80" />
