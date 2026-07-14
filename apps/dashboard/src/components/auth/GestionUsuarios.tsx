@@ -87,6 +87,14 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
     }
   }, [proyectoActivoId]);
 
+  // Si el usuario solo administra un proyecto, no tiene sentido mostrarle
+  // un selector — va directo a ese proyecto.
+  useEffect(() => {
+    if (!proyectoSel && proyectos.length === 1) {
+      setProyectoSel(proyectos[0].id);
+    }
+  }, [proyectos, proyectoSel]);
+
   // Carga inicial
   const fetchDatosBase = useCallback(async () => {
     setLoading(true);
@@ -375,7 +383,9 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
                           size="sm"
                           onClick={() => {
                             setSolicitudAccion({ id: s.id, tipo: 'aprobar' });
-                            setSolicitudProyecto(s.proyecto_solicitado_id || '');
+                            setSolicitudProyecto(
+                              proyectos.length === 1 ? proyectos[0].id : (s.proyecto_solicitado_id || '')
+                            );
                             setSolicitudRol('OT');
                             resetMensajes();
                           }}
@@ -410,18 +420,24 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
                       <CardContent className="border-t border-border/40 pt-4 flex gap-4 flex-wrap items-end bg-background/20 rounded-b-xl">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-muted uppercase">Proyecto a asignar</label>
-                          <select
-                            value={solicitudProyecto}
-                            onChange={(e) => setSolicitudProyecto(e.target.value)}
-                            className="bg-card border border-border text-foreground text-xs rounded-lg p-2 min-w-[200px]"
-                          >
-                            <option value="">— Selecciona —</option>
-                            {proyectos.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.codigo} — {p.nombre}
-                              </option>
-                            ))}
-                          </select>
+                          {proyectos.length === 1 ? (
+                            <div className="text-white text-xs font-semibold p-2 min-w-[200px]">
+                              {proyectos[0].codigo} — {proyectos[0].nombre}
+                            </div>
+                          ) : (
+                            <select
+                              value={solicitudProyecto}
+                              onChange={(e) => setSolicitudProyecto(e.target.value)}
+                              className="bg-card border border-border text-foreground text-xs rounded-lg p-2 min-w-[200px]"
+                            >
+                              <option value="">— Selecciona —</option>
+                              {proyectos.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.codigo} — {p.nombre}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-muted uppercase">Rol asignado</label>
@@ -497,23 +513,29 @@ export const GestionUsuarios: React.FC<GestionUsuariosProps> = ({ perfilGlobal, 
               {/* Selección del proyecto */}
               <div className="flex gap-4 items-end flex-wrap bg-panel/20 p-4 border border-border rounded-xl">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-muted uppercase">Selecciona el Proyecto</label>
-                  <select
-                    value={proyectoSel}
-                    onChange={(e) => {
-                      setProyectoSel(e.target.value);
-                      setMostrarAgregarMiembro(false);
-                      resetMensajes();
-                    }}
-                    className="bg-card border border-border text-foreground text-xs rounded-lg p-2 min-w-[260px]"
-                  >
-                    <option value="">— Elige un proyecto —</option>
-                    {proyectos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.codigo} — {p.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-[10px] font-bold text-muted uppercase">Proyecto</label>
+                  {proyectos.length === 1 ? (
+                    <div className="text-white text-sm font-semibold p-2 min-w-[260px]">
+                      {proyectos[0].codigo} — {proyectos[0].nombre}
+                    </div>
+                  ) : (
+                    <select
+                      value={proyectoSel}
+                      onChange={(e) => {
+                        setProyectoSel(e.target.value);
+                        setMostrarAgregarMiembro(false);
+                        resetMensajes();
+                      }}
+                      className="bg-card border border-border text-foreground text-xs rounded-lg p-2 min-w-[260px]"
+                    >
+                      <option value="">— Elige un proyecto —</option>
+                      {proyectos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.codigo} — {p.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 {proyectoSel && (
                   <Button
