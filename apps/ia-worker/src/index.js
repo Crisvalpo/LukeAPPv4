@@ -1,4 +1,8 @@
 import { createServer } from 'node:http';
+import WebSocket from 'ws';
+// @supabase/supabase-js instancia un RealtimeClient internamente (aunque no se use)
+// y requiere `WebSocket` global. Node < 22 no lo trae nativo — se polyfillea con `ws`.
+if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 import { createClient } from '@supabase/supabase-js';
 import { extraerDeGemini } from './gemini.js';
 
