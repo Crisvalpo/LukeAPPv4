@@ -10,6 +10,7 @@ import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
 import { Button } from './components/ui/Button';
+import { Settings } from 'lucide-react';
 
 // three.js/gsap pesan ~1.3MB — se cargan solo cuando realmente se muestra la
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
@@ -29,6 +30,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionCargada, setSessionCargada] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [menuConfigAbierto, setMenuConfigAbierto] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [avisoLogin, setAvisoLogin] = useState<string | null>(null);
 
@@ -236,13 +238,31 @@ function App() {
 
         <div className="flex items-center gap-4">
           {perfil?.puede_administrar_accesos && (
-            <Button
-              variant={vista === 'solicitudes' ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => setVista('solicitudes')}
-            >
-              Usuarios
-            </Button>
+            <div className="relative">
+              <Button
+                variant={vista === 'solicitudes' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setMenuConfigAbierto((v) => !v)}
+                title="Configuración"
+              >
+                <Settings size={16} />
+              </Button>
+              {menuConfigAbierto && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuConfigAbierto(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-panel border border-border rounded-lg shadow-2xl z-50 py-1">
+                    <button
+                      onClick={() => { setVista('solicitudes'); setMenuConfigAbierto(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors ${
+                        vista === 'solicitudes' ? 'text-accent bg-accent/10' : 'text-foreground hover:bg-card/60'
+                      }`}
+                    >
+                      Usuarios y Accesos
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* Badge de Perfil de Usuario */}

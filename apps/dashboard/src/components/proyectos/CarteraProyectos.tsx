@@ -206,9 +206,11 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
             {proyectos.length} proyecto{proyectos.length !== 1 ? 's' : ''} visible{proyectos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button variant="primary" onClick={() => setMostrarWizard(true)}>
-          + Nuevo Proyecto
-        </Button>
+        {esGerencia && (
+          <Button variant="primary" onClick={() => setMostrarWizard(true)}>
+            + Nuevo Proyecto
+          </Button>
+        )}
       </div>
 
       {error && (
