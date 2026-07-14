@@ -127,7 +127,7 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     return (
       <div className="max-w-6xl mx-auto p-8">
         <Button variant="outline" size="sm" className="mb-6" onClick={() => setSeleccionado(null)}>
-          ← Volver a la cartera
+          ← Volver a Proyectos
         </Button>
 
         <Card className="p-8">
@@ -221,12 +221,12 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-500 text-sm mb-6">
-          ⚠️ Error al cargar la cartera: {error}
+          ⚠️ Error al cargar los proyectos: {error}
         </div>
       )}
 
       {loading ? (
-        <div className="text-muted text-center py-16">Cargando cartera…</div>
+        <div className="text-muted text-center py-16">Cargando proyectos…</div>
       ) : proyectos.length === 0 && !error ? (
         <div className="text-center py-20 px-6 bg-panel rounded-2xl border border-dashed border-border">
           <div className="text-4xl mb-4">🗂️</div>
