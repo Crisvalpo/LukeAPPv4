@@ -277,6 +277,23 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
     }
   };
 
+  const handleEliminarElemento = async (id: string, tipo: 'fluido' | 'clase') => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar este ${tipo === 'fluido' ? 'fluido' : 'clase de piping'} del catálogo del proyecto?`)) return;
+
+    try {
+      const tabla = tipo === 'fluido' ? 'cat_fluido_servicio' : 'cat_clase_piping';
+      const { error } = await supabase
+        .from(tabla)
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchCatalogos();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el elemento del catálogo.');
+    }
+  };
+
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-background">
@@ -503,7 +520,18 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
                 <div className="grid gap-1.5 max-h-56 overflow-y-auto">
                   {fluidos.map((f) => (
                     <div key={f.id} className="bg-card/40 border border-border/60 px-3 py-2 rounded flex justify-between items-center text-xs font-medium text-foreground">
-                      <span className="font-extrabold text-white">{f.codigo}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEliminarElemento(f.id, 'fluido')}
+                          className="text-red-400/60 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-red-500/10 focus:outline-none"
+                          title="Eliminar de catálogo"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <span className="font-extrabold text-white">{f.codigo}</span>
+                      </div>
                       <span className="text-muted-foreground text-right">{f.descripcion}</span>
                     </div>
                   ))}
@@ -516,11 +544,22 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
                 {clases.map((c) => (
                   <div key={c.id} className="bg-card/40 border border-border/60 px-3 py-2 rounded flex flex-col gap-0.5 text-xs font-medium text-foreground">
                     <div className="flex justify-between items-center">
-                      <span className="font-extrabold text-white">{c.codigo}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEliminarElemento(c.id, 'clase')}
+                          className="text-red-400/60 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-red-500/10 focus:outline-none"
+                          title="Eliminar de catálogo"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <span className="font-extrabold text-white">{c.codigo}</span>
+                      </div>
                       <span className="text-muted-foreground text-right">{c.descripcion}</span>
                     </div>
                     {(c.presion_max || c.temp_max) && (
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                      <span className="text-[10px] text-muted-foreground mt-0.5 ml-6">
                         Límites: {c.presion_max || '—'} MPa | {c.temp_max || '—'} °C
                       </span>
                     )}

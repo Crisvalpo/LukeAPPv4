@@ -49,39 +49,62 @@ async function bufferToBase64(arrayBuffer) {
 // Indexa el texto de cada pagina como un chunk de doc_chunks con su embedding,
 // para busqueda semantica (RAG). Un chunk por pagina es suficiente granularidad
 // para especificaciones tecnicas tipicas (paginas de ~1-4 mil caracteres).
-async function guardarChunks(supabase, documentoId, proyectoId, paginasTexto) {
+async function guardarChunks(supabase, documentoId, proyectoId, paginasTexto, onProgreso) {
   // Limpiar chunks de un procesamiento anterior del mismo documento antes de reindexar
   await supabase.from('doc_chunks').delete().eq('documento_id', documentoId);
 
+  const chunksParaInsertar = [];
   let nroChunk = 0;
-  let guardados = 0;
-  for (const pagina of paginasTexto) {
-    const texto = (pagina.texto ?? '').trim();
-    if (texto.length < MIN_CHARS_CHUNK) continue;
-    nroChunk += 1;
-    let embedding;
-    try {
-      embedding = await embedTexto(texto);
-    } catch (e) {
-      console.error('[ia-worker] fallo embedding pagina', pagina.numero_pagina, e.message);
-      continue;
+
+  // Procesamos los embeddings en paralelo de a 8 páginas a la vez para máxima velocidad
+  const CONCURRENCY_LIMIT = 8;
+  for (let i = 0; i < paginasTexto.length; i += CONCURRENCY_LIMIT) {
+    const lote = paginasTexto.slice(i, i + CONCURRENCY_LIMIT);
+    
+    if (onProgreso) {
+      await onProgreso(`Generando embeddings: pág. ${i + 1} a ${Math.min(i + CONCURRENCY_LIMIT, paginasTexto.length)} de ${paginasTexto.length}...`);
     }
-    const { error } = await supabase.from('doc_chunks').insert({
-      documento_id: documentoId,
-      proyecto_id: proyectoId,
-      nro_chunk: nroChunk,
-      pagina_inicio: pagina.numero_pagina,
-      pagina_fin: pagina.numero_pagina,
-      contenido: texto,
-      embedding,
-    });
-    if (error) {
-      console.error('[ia-worker] fallo guardando chunk pagina', pagina.numero_pagina, error.message);
-      continue;
-    }
-    guardados += 1;
+
+    await Promise.all(
+      lote.map(async (pagina) => {
+        const texto = (pagina.texto ?? '').trim();
+        if (texto.length < MIN_CHARS_CHUNK) return;
+
+        try {
+          const embedding = await embedTexto(texto);
+          chunksParaInsertar.push({
+            documento_id: documentoId,
+            proyecto_id: proyectoId,
+            nro_chunk: ++nroChunk,
+            pagina_inicio: pagina.numero_pagina,
+            pagina_fin: pagina.numero_pagina,
+            contenido: texto,
+            embedding,
+          });
+        } catch (e) {
+          console.error('[ia-worker] falló embedding página', pagina.numero_pagina, e.message);
+        }
+      })
+    );
+    
+    // Delay preventivo para no saturar rate limits
+    await new Promise((resolve) => setTimeout(resolve, 80));
   }
-  return guardados;
+
+  if (chunksParaInsertar.length > 0) {
+    if (onProgreso) {
+      await onProgreso(`Guardando indexación semántica en base de datos...`);
+    }
+    // Ordenar por número de chunk
+    chunksParaInsertar.sort((a, b) => a.nro_chunk - b.nro_chunk);
+    
+    const { error } = await supabase.from('doc_chunks').insert(chunksParaInsertar);
+    if (error) {
+      throw new Error(`Error insertando chunks indexados: ${error.message}`);
+    }
+  }
+
+  return chunksParaInsertar.length;
 }
 
 async function procesarDocumento(jwt, documentoId) {
@@ -162,7 +185,11 @@ async function procesarDocumento(jwt, documentoId) {
     loteIds.push(loteId);
   }
 
-  const nChunks = await guardarChunks(supabase, documentoId, doc.proyecto_id, paginasTexto);
+  const nChunks = await guardarChunks(supabase, documentoId, doc.proyecto_id, paginasTexto, async (msg) => {
+    await supabase.from('doc_biblioteca')
+      .update({ error_detalle: msg })
+      .eq('id', documentoId);
+  });
 
   if (loteIds.length === 0 && nChunks === 0) {
     await supabase.from('doc_biblioteca')

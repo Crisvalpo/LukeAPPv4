@@ -1,3 +1,5 @@
+import pdf from 'pdf-parse';
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_MODEL_PRO = process.env.GEMINI_MODEL_PRO || 'gemini-2.5-flash';
@@ -245,101 +247,66 @@ export async function extraerDeGemini(pdfBase64, onProgreso) {
   let fileUri = null;
 
   try {
+    // ─── Fase 2: Extracción local de texto plano con pdf-parse ───
     if (onProgreso) {
-      await onProgreso('Subiendo PDF a la API de archivos de Google...');
+      await onProgreso('Analizando y extrayendo texto del PDF localmente...');
+    }
+    console.log('[ia-worker] Iniciando extracción local de páginas con pdf-parse...');
+    
+    const fileBuffer = Buffer.from(pdfBase64, 'base64');
+    const paginasTexto = [];
+    let numeroPagina = 1;
+
+    // Callback de renderizado para pdf-parse
+    const renderPage = async (pageData) => {
+      const textContent = await pageData.getTextContent();
+      let lastY, text = '';
+      for (let item of textContent.items) {
+        if (lastY === item.transform[5] || !lastY) {
+          text += item.str;
+        } else {
+          text += '\n' + item.str;
+        }
+        lastY = item.transform[5];
+      }
+      
+      paginasTexto.push({
+        numero_pagina: numeroPagina++,
+        texto: text.trim()
+      });
+      
+      return text;
+    };
+
+    const parsedData = await pdf(fileBuffer, { pagerender: renderPage });
+    const nPaginas = parsedData.numpages || paginasTexto.length || 1;
+    
+    paginasTexto.sort((a, b) => (a.numero_pagina || 0) - (b.numero_pagina || 0));
+    console.log(`[ia-worker] Éxito: ${nPaginas} páginas extraídas localmente en segundos.`);
+
+    // ─── Fase 1: Subida y análisis de catálogo con Gemini ───
+    if (onProgreso) {
+      await onProgreso('Subiendo PDF temporal a Google para extraer catálogos...');
     }
     const uploadInfo = await subirArchivoAGemini(pdfBase64);
     fileUri = uploadInfo.fileUri;
     fileName = uploadInfo.fileName;
 
     if (onProgreso) {
-      await onProgreso('Fase 1: Extrayendo Catálogo con Gemini Pro...');
+      await onProgreso('Fase 1: Extrayendo fluidos y clases con Gemini...');
     }
-    console.log('[ia-worker] Iniciando Fase 1: Extracción de fluidos y clases con Gemini Pro...');
+    console.log('[ia-worker] Iniciando Fase 1: Extracción de fluidos y clases con Gemini...');
     let catalogo;
     try {
       catalogo = await llamarGemini(GEMINI_MODEL_PRO, PROMPT_CATALOGO, SCHEMA_CATALOGO, fileUri);
     } catch (err) {
-      console.warn('[ia-worker] Gemini Pro falló para la extracción del catálogo. Intentando fallback con Flash...', err.message);
-      if (onProgreso) {
-        await onProgreso('Fase 1 (Fallback): Extrayendo Catálogo con Gemini Flash...');
-      }
+      console.warn('[ia-worker] Gemini Pro/Flash falló para catálogo. Reintentando...', err.message);
       catalogo = await llamarGemini(GEMINI_MODEL, PROMPT_CATALOGO, SCHEMA_CATALOGO, fileUri);
     }
 
-    // Determinar número de páginas
-    let nPaginas = catalogo?.n_paginas_documento;
-    if (typeof nPaginas !== 'number' || nPaginas <= 0) {
-      try {
-        console.log('[ia-worker] Determinando número de páginas del PDF con Gemini...');
-        const responseNum = await llamarGemini(
-          GEMINI_MODEL,
-          '¿Cuántas páginas tiene exactamente este documento PDF? Responde únicamente con un número entero dentro del esquema JSON.',
-          {
-            type: 'OBJECT',
-            properties: { paginas: { type: 'INTEGER' } },
-            required: ['paginas'],
-          },
-          fileUri
-        );
-        nPaginas = responseNum?.paginas || 1;
-      } catch (errNum) {
-        console.warn('[ia-worker] No se pudo determinar el número de páginas con Gemini, asumiendo 1.', errNum.message);
-        nPaginas = 1;
-      }
-    }
-
-    console.log(`[ia-worker] Iniciando Fase 2: Extracción de texto por lotes para RAG (Total páginas: ${nPaginas})...`);
-    const paginasTexto = [];
-    const TAMANIO_LOTE = 5;
-
-    for (let i = 1; i <= nPaginas; i += TAMANIO_LOTE) {
-      const inicio = i;
-      const fin = Math.min(i + TAMANIO_LOTE - 1, nPaginas);
-      console.log(`[ia-worker] Extrayendo páginas ${inicio} a ${fin} de ${nPaginas}...`);
-
-      if (onProgreso) {
-        await onProgreso(`Fase 2: Extrayendo texto páginas ${inicio}-${fin} de ${nPaginas}...`);
-      }
-
-      const promptLote = `Extrae el TEXTO COMPLETO de las páginas desde la ${inicio} hasta la ${fin} (inclusive) de este documento en el arreglo "paginas_texto". Para cada página, especifica el "numero_pagina" real (empezando en 1) and el "texto" plano (sin marcas de agua ni encabezados repetitivos). Sé detallado y completo. Responde sólo con el JSON solicitado.`;
-
-      try {
-        const resLote = await llamarGemini(GEMINI_MODEL, promptLote, SCHEMA_TEXTO, fileUri);
-        if (resLote && Array.isArray(resLote.paginas_texto)) {
-          paginasTexto.push(...resLote.paginas_texto);
-        }
-      } catch (errLote) {
-        console.error(`[ia-worker] Error en lote ${inicio}-${fin}:`, errLote.message, '- Intentando fallback individual...');
-        // Fallback: procesar página por página del lote para no perder todo el lote
-        for (let p = inicio; p <= fin; p++) {
-          try {
-            if (onProgreso) {
-              await onProgreso(`Fase 2 (Fallback): Página ${p} de ${nPaginas}...`);
-            }
-            const promptIndiv = `Extrae el TEXTO COMPLETO de la página ${p} de este documento en el arreglo "paginas_texto". Especifica el "numero_pagina" real (que es ${p}) y el "texto" plano. Responde sólo con el JSON solicitado.`;
-            const resIndiv = await llamarGemini(GEMINI_MODEL, promptIndiv, SCHEMA_TEXTO, fileUri);
-            if (resIndiv && Array.isArray(resIndiv.paginas_texto)) {
-              paginasTexto.push(...resIndiv.paginas_texto);
-            }
-          } catch (errIndiv) {
-            console.error(`[ia-worker] Fallo crítico extrayendo página individual ${p}:`, errIndiv.message);
-          }
-        }
-      }
-
-      // Pequeña pausa para no saturar rate limits
-      if (i + TAMANIO_LOTE <= nPaginas) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-      }
-    }
-
-    // Ordenar las páginas por número de página para consistencia
-    paginasTexto.sort((a, b) => (a.numero_pagina || 0) - (b.numero_pagina || 0));
-
     return {
-      fluidos: Array.isArray(catalogo.fluidos) ? catalogo.fluidos : [],
-      clases: Array.isArray(catalogo.clases) ? catalogo.clases : [],
+      fluidos: Array.isArray(catalogo?.fluidos) ? catalogo.fluidos : [],
+      clases: Array.isArray(catalogo?.clases) ? catalogo.clases : [],
       paginasTexto,
       nPaginas,
     };
