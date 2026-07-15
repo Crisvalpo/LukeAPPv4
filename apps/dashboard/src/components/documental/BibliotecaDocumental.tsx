@@ -43,6 +43,37 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
   const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+
+  const handleEliminar = async (docId: string, storagePath: string) => {
+    if (!window.confirm('¿Está seguro de que desea eliminar este documento? Se borrarán permanentemente el archivo y todo el conocimiento extraído (incluyendo chunks de búsqueda para el bot).')) {
+      return;
+    }
+    setEliminandoId(docId);
+    setError(null);
+    try {
+      // 1. Eliminar archivo físico de Supabase Storage
+      const { error: errStorage } = await supabase.storage
+        .from('documentos')
+        .remove([storagePath]);
+      if (errStorage) {
+        console.warn('Error al eliminar archivo del storage (puede que ya no exista):', errStorage.message);
+      }
+
+      // 2. Eliminar registro de base de datos (con ON DELETE CASCADE en chunks e import_lotes)
+      const { error: errDb } = await supabase
+        .from('doc_biblioteca')
+        .delete()
+        .eq('id', docId);
+      if (errDb) throw errDb;
+
+      await fetchDocumentos();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar el documento.');
+    } finally {
+      setEliminandoId(null);
+    }
+  };
 
   const [nuevoTitulo, setNuevoTitulo] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState<Documento['tipo_documento']>('especificacion_tecnica');
@@ -289,7 +320,17 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {documentos.map((doc) => (
             <div key={doc.id} className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col justify-between hover:border-accent transition-all h-72">
-              <div className="p-4 pb-0 flex justify-end">
+              <div className="p-4 pb-0 flex justify-between items-center">
+                <button
+                  onClick={() => handleEliminar(doc.id, doc.storage_path)}
+                  disabled={eliminandoId !== null || procesandoId !== null}
+                  title="Eliminar documento y conocimiento"
+                  className="text-red-400/60 hover:text-red-400 disabled:opacity-30 transition-colors p-1 rounded hover:bg-red-500/10 focus:outline-none"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
                 <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${getStatusBadgeClass(doc.estado_procesamiento)}`}>
                   {getStatusLabel(doc.estado_procesamiento)}
                 </span>
