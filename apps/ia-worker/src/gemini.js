@@ -93,20 +93,36 @@ async function subirArchivoAGemini(pdfBase64) {
   };
 
   console.log('[ia-worker] Iniciando subida a Gemini Files API...');
-  const initRes = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: {
-        'X-Goog-Upload-Protocol': 'resumable',
-        'X-Goog-Upload-Command': 'start',
-        'X-Goog-Upload-Header-Content-Length': fileBuffer.length.toString(),
-        'X-Goog-Upload-Header-Content-Type': 'application/pdf',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(metadata),
+  
+  // Timeout de 30s para iniciar la sesión resumible
+  const initController = new AbortController();
+  const initTimeout = setTimeout(() => initController.abort(), 30000);
+  
+  let initRes;
+  try {
+    initRes = await fetch(
+      `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': fileBuffer.length.toString(),
+          'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(metadata),
+        signal: initController.signal,
+      }
+    );
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('La conexión inicial con Google Gemini Files API superó el tiempo de espera (30s).');
     }
-  );
+    throw err;
+  } finally {
+    clearTimeout(initTimeout);
+  }
 
   if (!initRes.ok) {
     const errText = await initRes.text().catch(() => '');
@@ -119,15 +135,31 @@ async function subirArchivoAGemini(pdfBase64) {
   }
 
   console.log('[ia-worker] Transmitiendo bytes del PDF a la API de archivos...');
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'X-Goog-Upload-Command': 'upload, finalize',
-      'X-Goog-Upload-Offset': '0',
-      'Content-Length': fileBuffer.length.toString(),
-    },
-    body: fileBuffer,
-  });
+  
+  // Timeout de 120s para transmitir el archivo grande de PDF
+  const uploadController = new AbortController();
+  const uploadTimeout = setTimeout(() => uploadController.abort(), 120000);
+  
+  let uploadRes;
+  try {
+    uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Command': 'upload, finalize',
+        'X-Goog-Upload-Offset': '0',
+        'Content-Length': fileBuffer.length.toString(),
+      },
+      body: fileBuffer,
+      signal: uploadController.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('La transmisión del PDF a Google Gemini superó el límite de tiempo de espera (120s).');
+    }
+    throw err;
+  } finally {
+    clearTimeout(uploadTimeout);
+  }
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text().catch(() => '');
@@ -138,17 +170,30 @@ async function subirArchivoAGemini(pdfBase64) {
   const fileUri = uploadData.file.uri;
   const fileName = uploadData.file.name;
 
-  // Polling si está en procesamiento
+  // Polling si está en procesamiento (con timeout de 60s max)
   let status = uploadData.file.state;
-  while (status === 'PROCESSING') {
+  let pollingAttempts = 0;
+  while (status === 'PROCESSING' && pollingAttempts < 30) {
     console.log('[ia-worker] El archivo PDF se está indexando en los servidores de Google...');
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    const pollRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${GEMINI_API_KEY}`
-    );
-    if (pollRes.ok) {
-      const pollData = await pollRes.json();
-      status = pollData.state;
+    pollingAttempts++;
+    
+    const pollController = new AbortController();
+    const pollTimeout = setTimeout(() => pollController.abort(), 15000);
+    
+    try {
+      const pollRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${GEMINI_API_KEY}`,
+        { signal: pollController.signal }
+      );
+      if (pollRes.ok) {
+        const pollData = await pollRes.json();
+        status = pollData.state;
+      }
+    } catch (err) {
+      console.warn('[ia-worker] Error temporal consultando estado de indexación en Google:', err.message);
+    } finally {
+      clearTimeout(pollTimeout);
     }
   }
 
