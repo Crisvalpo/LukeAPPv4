@@ -196,7 +196,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       <div className="flex justify-between items-center border-b border-border pb-4">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Ingesta Documental con IA</h2>
-          <p className="text-xs text-muted-foreground mt-1">Sube especificaciones y adendas en PDF para extraer clases de piping y fluidos con Gemini, y poblar catálogos con aprobación humana.</p>
+          <p className="text-xs text-muted-foreground mt-1">Sube especificaciones y adendas en PDF para extraer las especificaciones.</p>
         </div>
       </div>
 
@@ -257,7 +257,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
           <div>
             <h3 className="text-white text-base font-bold tracking-tight">Biblioteca Documental Vacía</h3>
             <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
-              Comienza subiendo las especificaciones técnicas o adendas de tu proyecto para estructurar las clases de piping y fluidos de servicio.
+              Comienza subiendo las especificaciones técnicas o adendas de tu proyecto para extraer las especificaciones.
             </p>
           </div>
 

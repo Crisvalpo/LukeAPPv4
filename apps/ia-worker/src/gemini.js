@@ -117,10 +117,27 @@ export async function extraerDeGemini(pdfBase64) {
   }
 
   let parsed;
+  let textToParse = text.trim();
+  if (textToParse.startsWith('```')) {
+    textToParse = textToParse.replace(/^```(json)?\s*/i, '').replace(/```$/, '').trim();
+  }
+
   try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error('La respuesta de Gemini no es JSON válido');
+    parsed = JSON.parse(textToParse);
+  } catch (errFirst) {
+    try {
+      // Reemplazar saltos de línea y tabuladores crudos que rompen el parser JSON
+      const cleaned = textToParse.replace(/[\u0000-\u001F]+/g, (match) => {
+        if (match === '\n') return '\\n';
+        if (match === '\r') return '\\r';
+        if (match === '\t') return '\\t';
+        return '';
+      });
+      parsed = JSON.parse(cleaned);
+    } catch (errSecond) {
+      console.error('[ia-worker] Fallo crítico parseando JSON. Texto de Gemini:', textToParse);
+      throw new Error(`La respuesta de Gemini no es JSON válido: ${errFirst.message}`);
+    }
   }
   return {
     fluidos: Array.isArray(parsed.fluidos) ? parsed.fluidos : [],
