@@ -79,6 +79,18 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
   const [cargando, setCargando] = useState(true);
   const [aplicando, setAplicando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payloadEditado, setPayloadEditado] = useState<Record<string, any>>({});
+  const [guardandoFila, setGuardandoFila] = useState(false);
+
+  const seleccionada = filas.find((f) => f.id === seleccionadaId) ?? null;
+
+  useEffect(() => {
+    if (seleccionada) {
+      setPayloadEditado(seleccionada.payload || {});
+    } else {
+      setPayloadEditado({});
+    }
+  }, [seleccionada]);
 
   const cargarLotes = useCallback(async () => {
     setCargando(true);
@@ -142,8 +154,8 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
       const { error: errAplicar } = await supabase.rpc('importar_aplicar_lote', { p_lote_id: loteActivoId });
       if (errAplicar) throw errAplicar;
       await cargarLotes();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al aplicar el lote.');
+    } catch (e: any) {
+      setError(e?.message || e?.details || 'Error al aplicar el lote.');
     } finally {
       setAplicando(false);
     }
@@ -156,7 +168,37 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
     onCompletado();
   };
 
-  const seleccionada = filas.find((f) => f.id === seleccionadaId) ?? null;
+  const handleGuardarCambiosFila = async () => {
+    if (!seleccionada || !loteActivoId) return;
+    setGuardandoFila(true);
+    setError(null);
+    try {
+      const tabla = loteActivo?.tabla_destino;
+      const campoClave = 'codigo';
+      const nuevoCodigo = (payloadEditado[campoClave] ?? '').toUpperCase().trim();
+
+      const { error: errUpdate } = await supabase
+        .from('import_filas')
+        .update({
+          payload: payloadEditado,
+          clave_natural: nuevoCodigo || seleccionada.clave_natural
+        })
+        .eq('id', seleccionada.id);
+
+      if (errUpdate) throw errUpdate;
+
+      // Recalcular el Diff del lote
+      const { error: errDiff } = await supabase.rpc('importar_calcular_diff', { p_lote_id: loteActivoId });
+      if (errDiff) throw errDiff;
+
+      // Recargar filas
+      await cargarFilas(loteActivoId);
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar los cambios de la propuesta.');
+    } finally {
+      setGuardandoFila(false);
+    }
+  };
 
   useHeaderActions(
     <Button variant="outline" size="sm" onClick={onBack}>
@@ -321,14 +363,42 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
                   </div>
                 )}
 
-                <div className="bg-card border border-border/80 rounded-xl p-4 space-y-3">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Datos Propuestos Finales</h4>
-                  <pre className="bg-panel border border-border/60 p-3 rounded-lg text-[10px] text-accent font-mono overflow-x-auto">
-                    {JSON.stringify(
-                      Object.fromEntries(campos.map((c) => [c.label, seleccionada.payload[c.campo] ?? null])),
-                      null, 2
-                    )}
-                  </pre>
+                <div className="bg-card border border-border/80 rounded-xl p-4 space-y-4">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Datos Propuestos Finales (Editables)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {campos.map((c) => {
+                      const tipoInput = (c.campo === 'presion_max' || c.campo === 'temp_max') ? 'number' : 'text';
+                      return (
+                        <div key={c.campo} className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">{c.label}</label>
+                          <input
+                            type={tipoInput}
+                            step={tipoInput === 'number' ? '0.1' : undefined}
+                            value={payloadEditado[c.campo] ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPayloadEditado((prev) => ({
+                                ...prev,
+                                [c.campo]: tipoInput === 'number' && val !== '' ? parseFloat(val) : val,
+                              }));
+                            }}
+                            className="bg-panel border border-border text-foreground px-3 py-1.5 rounded text-xs font-semibold focus:outline-none focus:border-accent"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="flex justify-end pt-2 border-t border-border/40">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={guardandoFila}
+                      onClick={handleGuardarCambiosFila}
+                    >
+                      {guardandoFila ? 'Guardando...' : 'Guardar Cambios en Fila'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
