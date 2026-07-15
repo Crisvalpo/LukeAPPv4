@@ -468,10 +468,22 @@ BEGIN
       v_fluido_id := NULL;
       v_cod := NULLIF(upper(trim(v_fila.payload ->> 'fluido_codigo')), '');
       IF v_cod IS NOT NULL THEN
-        SELECT id INTO v_fluido_id FROM lukeapp.cat_fluido_servicio
-        WHERE proyecto_id = v_lote.proyecto_id AND upper(codigo) = v_cod;
-        IF v_fluido_id IS NULL THEN
-          RAISE EXCEPTION 'Fila %: fluido "%" no existe en el catálogo del proyecto', v_fila.nro_fila, v_cod;
+        IF position(',' in v_cod) > 0 THEN
+          SELECT id INTO v_fluido_id FROM lukeapp.cat_fluido_servicio
+          WHERE proyecto_id = v_lote.proyecto_id 
+            AND upper(codigo) = ANY(
+              SELECT upper(trim(val)) FROM unnest(string_to_array(v_cod, ',')) AS val
+            )
+          LIMIT 1;
+          IF v_fluido_id IS NULL THEN
+            RAISE EXCEPTION 'Fila %: ninguno de los fluidos (%) existe en el catálogo del proyecto. Debes registrarlos primero.', v_fila.nro_fila, v_cod;
+          END IF;
+        ELSE
+          SELECT id INTO v_fluido_id FROM lukeapp.cat_fluido_servicio
+          WHERE proyecto_id = v_lote.proyecto_id AND upper(codigo) = v_cod;
+          IF v_fluido_id IS NULL THEN
+            RAISE EXCEPTION 'Fila %: fluido "%" no existe en el catálogo del proyecto', v_fila.nro_fila, v_cod;
+          END IF;
         END IF;
       END IF;
 
