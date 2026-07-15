@@ -403,8 +403,8 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                 </span>
               </div>
 
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '8px', lineHeight: 1.4 }}>
-                💡 Al crear el proyecto se copiarán los catálogos e industria seleccionada y se te asignará el rol de <strong>ADMIN</strong> con control total de maestros.
+              <div className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                💡 Al crear el proyecto se inicializarán los diámetros normalizados NPS y se te asignará el rol de <strong>ADMIN</strong> con control total de maestros.
               </div>
             </div>
           )}

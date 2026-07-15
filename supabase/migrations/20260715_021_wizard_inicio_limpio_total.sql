@@ -1,4 +1,6 @@
 -- ─── Redefinir crear_proyecto_wizard para Inicio Limpio Total de Catálogos (Excepto NPS) ───
+DROP FUNCTION IF EXISTS lukeapp.crear_proyecto_wizard(text, text, uuid, lukeapp.industria_tipo, uuid);
+
 CREATE OR REPLACE FUNCTION lukeapp.crear_proyecto_wizard(
   p_codigo       TEXT,
   p_nombre       TEXT,
