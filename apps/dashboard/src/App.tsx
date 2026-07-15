@@ -260,20 +260,20 @@ function App() {
               {proyectoActivo && (
                 <div className="flex items-center gap-1 bg-card/40 border border-border/80 p-0.5 rounded-lg ml-2">
                   <Button
-                    variant={vista === 'cubicador' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => { setVista('cubicador'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Cubicador
-                  </Button>
-                  <Button
                     variant={vista === 'ingesta_ia' || vista === 'revision_lote' || vista === 'constructor_specs' ? 'primary' : 'ghost'}
                     size="sm"
                     onClick={() => { setVista('ingesta_ia'); setDocSeleccionado(null); }}
                     className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
                   >
                     Especificaciones IA
+                  </Button>
+                  <Button
+                    variant={vista === 'cubicador' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('cubicador'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Datos
                   </Button>
                   <Button
                     variant={vista === 'biblioteca_pids' ? 'primary' : 'ghost'}

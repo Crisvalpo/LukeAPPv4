@@ -120,11 +120,11 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
         <Button variant="outline" size="sm" onClick={() => setSeleccionado(null)}>
           ← Volver
         </Button>
-        <Button variant="primary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
-          Importar Cubicación
+        <Button variant="primary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
+          Especificaciones IA
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
-          Ingesta Documental IA
+        <Button variant="secondary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
+          Datos
         </Button>
         <Button variant="outline" size="sm" onClick={() => onAbrirPids(seleccionado.id)}>
           Planos P&ID
