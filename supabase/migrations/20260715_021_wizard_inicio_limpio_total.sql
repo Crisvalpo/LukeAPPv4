@@ -26,13 +26,13 @@ BEGIN
 
   -- 1. Crear Proyecto
   INSERT INTO lukeapp.proyectos (codigo, nombre, mandante_id, industria, estado, creado_por)
-  VALUES (upper(trim(p_codigo)), trim(p_nombre), p_mandante_id, p_industria, 'activo', v_creador)
+  VALUES (upper(trim(p_codigo)), trim(p_nombre), p_mandante_id, p_industria::lukeapp.industria_tipo, 'activo', v_creador)
   RETURNING id INTO v_proyecto_id;
 
   -- 2. Instanciar únicamente diámetros NPS normalizados (geometría universal estándar)
   FOR v_plantilla IN
     SELECT tabla, payload FROM lukeapp.plantillas_catalogo
-    WHERE industria = p_industria AND activo = true AND tabla = 'cat_diametros_nps'
+    WHERE (industria::text) = p_industria AND activo = true AND tabla = 'cat_diametros_nps'
   LOOP
     FOR v_item IN SELECT * FROM jsonb_array_elements(v_plantilla.payload)
     LOOP
