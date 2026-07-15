@@ -41,8 +41,94 @@ const SCHEMA_CATALOGO = {
         required: ['codigo', 'confianza'],
       },
     },
+    diametros_nps: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          nps: { type: 'STRING' },
+          nps_mm: { type: 'NUMBER' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['nps', 'confianza'],
+      },
+    },
+    esquemas_pintura: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          descripcion: { type: 'STRING' },
+          capas: { type: 'INTEGER' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'confianza'],
+      },
+    },
+    aislaciones_ext: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          descripcion: { type: 'STRING' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'confianza'],
+      },
+    },
+    porcentajes_nde: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          porcentaje: { type: 'NUMBER' },
+          descripcion: { type: 'STRING' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'porcentaje', 'confianza'],
+      },
+    },
+    tipos_prueba: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          descripcion: { type: 'STRING' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'confianza'],
+      },
+    },
+    tipos_union: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          descripcion: { type: 'STRING' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'confianza'],
+      },
+    },
   },
-  required: ['fluidos', 'clases'],
+  required: ['fluidos', 'clases', 'diametros_nps', 'esquemas_pintura', 'aislaciones_ext', 'porcentajes_nde', 'tipos_prueba', 'tipos_union'],
 };
 
 const SCHEMA_TEXTO = {
@@ -74,7 +160,19 @@ Extrae del documento adjunto:
 
 2. CLASES DE PIPING: únicamente si el documento define formalmente un CATÁLOGO de clases de piping (ej: "A1", "C1"), normalmente con su rating, material, servicio asociado, presión/temperatura máxima de diseño. Igual criterio estricto que para fluidos: solo códigos de catálogo formalmente definidos, nunca menciones incidentales. Si se menciona, incluye el código de fluido/servicio asociado (fluido_codigo) y presión/temperatura máxima de diseño (presion_max/temp_max) como valores numéricos simples, sin unidades.
 
-Para cada propuesta de fluido o clase (si las hay) indica:
+3. DIÁMETROS NPS: únicamente si el documento define formalmente una tabla de rangos de diámetros nominales cubiertos por una clase de piping o un listado de componentes asociados a diámetros específicos. Extrae cada diámetro nominal único mencionado (ej: "1/2\"", "2\"", "10\"", "24\"") en el campo "nps" y su equivalencia en milímetros en "nps_mm" si el documento la indica. NO propongas un diámetro por menciones incidentales fuera de una tabla o listado formal de rangos.
+
+4. ESQUEMAS DE PINTURA: únicamente si el documento define formalmente un catálogo de esquemas de pintura o recubrimiento externo del mandante (ej: "P01", "System 1A"), normalmente en la sección de protección contra la corrosión y recubrimientos externos de las líneas. Incluye el número de capas recomendadas en "capas" si el documento lo indica.
+
+5. AISLACIÓN EXTERIOR: únicamente si el documento define formalmente códigos y tipos de aislación térmica externa (ej: "IH" para conservación de calor, "IP" para protección de personal, "IC" para conservación de frío), normalmente en la sección de aislamiento térmico de cañerías y especificaciones de conservación de temperatura.
+
+6. PORCENTAJE NDE (Ensayos No Destructivos): únicamente si el documento define formalmente, en la sección de control de calidad (QA/QC) y pruebas no destructivas, el código del ensayo y el porcentaje de inspección radiográfica o de ultrasonido exigido para las juntas de soldadura (ej: "100% RT" para líneas críticas, "10% RT" para categoría D). El campo "porcentaje" es obligatorio y debe ser un número entre 0 y 100.
+
+7. TIPOS DE PRUEBA DE PRESIÓN: únicamente si el documento define formalmente, en las secciones de comisionamiento y pruebas de presión finales de las líneas, los códigos de prueba mecánica aceptados (ej: "HY" para prueba hidrostática, "PN" para neumática, "LK" para leak-test de servicio).
+
+8. TIPOS DE UNIÓN: únicamente si el documento define formalmente, en el listado de componentes y conexiones admitidas para cada rango de diámetro de una clase, los tipos de unión estructural de las cañerías (ej: "BW" soldadura a tope, "SW" embutido soldable, "THR" roscado, "FLG" bridas).
+
+Para cada propuesta (si las hay) de cualquiera de los 8 catálogos anteriores indica:
 - "paginas": número(s) de página del PDF donde aparece la definición formal del código (empezando en 1).
 - "contexto": una cita textual breve (máx. 200 caracteres) que muestre la definición formal del código, no una mención incidental.
 - "confianza": 0.0 a 1.0. Usa menos de 0.5 si tienes cualquier duda sobre si es realmente un código de catálogo formal.
@@ -352,6 +450,12 @@ export async function extraerDeGemini(pdfBase64, onProgreso) {
     return {
       fluidos: Array.isArray(catalogo?.fluidos) ? catalogo.fluidos : [],
       clases: Array.isArray(catalogo?.clases) ? catalogo.clases : [],
+      diametrosNps: Array.isArray(catalogo?.diametros_nps) ? catalogo.diametros_nps : [],
+      esquemasPintura: Array.isArray(catalogo?.esquemas_pintura) ? catalogo.esquemas_pintura : [],
+      aislacionesExt: Array.isArray(catalogo?.aislaciones_ext) ? catalogo.aislaciones_ext : [],
+      porcentajesNde: Array.isArray(catalogo?.porcentajes_nde) ? catalogo.porcentajes_nde : [],
+      tiposPrueba: Array.isArray(catalogo?.tipos_prueba) ? catalogo.tipos_prueba : [],
+      tiposUnion: Array.isArray(catalogo?.tipos_union) ? catalogo.tipos_union : [],
       paginasTexto,
       nPaginas,
     };

@@ -333,7 +333,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {documentos.map((doc) => (
-            <div key={doc.id} className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col justify-between hover:border-accent transition-all h-72">
+            <div key={doc.id} className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col justify-between hover:border-accent transition-all min-h-72">
               <div className="p-4 pb-0 flex justify-between items-center">
                 <button
                   onClick={() => handleEliminar(doc.id, doc.storage_path)}

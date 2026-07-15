@@ -138,7 +138,10 @@ async function procesarDocumento(jwt, documentoId) {
     .update({ estado_procesamiento: 'extrayendo' })
     .eq('id', documentoId);
 
-  const { fluidos, clases, paginasTexto, nPaginas } = await extraerDeGemini(pdfBase64, async (progresoMsg) => {
+  const {
+    fluidos, clases, diametrosNps, esquemasPintura, aislacionesExt, porcentajesNde, tiposPrueba, tiposUnion,
+    paginasTexto, nPaginas,
+  } = await extraerDeGemini(pdfBase64, async (progresoMsg) => {
     await supabase.from('doc_biblioteca')
       .update({ error_detalle: progresoMsg })
       .eq('id', documentoId);
@@ -147,41 +150,69 @@ async function procesarDocumento(jwt, documentoId) {
   const fuenteBase = { documento_id: documentoId, titulo: doc.titulo };
   const loteIds = [];
 
-  if (fluidos.length > 0) {
-    const filas = fluidos.map((f) => ({
-      payload: { codigo: f.codigo, descripcion: f.descripcion ?? null },
-      fuente: { ...fuenteBase, paginas: f.paginas ?? [], contexto: f.contexto ?? null },
-      confianza: typeof f.confianza === 'number' ? f.confianza : null,
-    }));
-    const { data: loteId, error: errLote } = await supabase.rpc('importar_crear_lote_ia', {
-      p_proyecto_id: doc.proyecto_id,
-      p_tabla_destino: 'cat_fluido_servicio',
-      p_documento_id: documentoId,
-      p_filas: filas,
-    });
-    if (errLote) throw new Error(`Error creando lote de fluidos: ${errLote.message}`);
-    loteIds.push(loteId);
-  }
-
-  if (clases.length > 0) {
-    const filas = clases.map((c) => ({
-      payload: {
+  const catalogosAProponer = [
+    {
+      tablaDestino: 'cat_fluido_servicio',
+      items: fluidos,
+      mapPayload: (f) => ({ codigo: f.codigo, descripcion: f.descripcion ?? null }),
+    },
+    {
+      tablaDestino: 'cat_clase_piping',
+      items: clases,
+      mapPayload: (c) => ({
         codigo: c.codigo,
         descripcion: c.descripcion ?? null,
         fluido_codigo: c.fluido_codigo ?? null,
         presion_max: c.presion_max ?? null,
         temp_max: c.temp_max ?? null,
-      },
-      fuente: { ...fuenteBase, paginas: c.paginas ?? [], contexto: c.contexto ?? null },
-      confianza: typeof c.confianza === 'number' ? c.confianza : null,
+      }),
+    },
+    {
+      tablaDestino: 'cat_diametros_nps',
+      items: diametrosNps,
+      mapPayload: (n) => ({ nps: n.nps, nps_mm: n.nps_mm ?? null }),
+    },
+    {
+      tablaDestino: 'cat_esquema_pintura',
+      items: esquemasPintura,
+      mapPayload: (p) => ({ codigo: p.codigo, descripcion: p.descripcion ?? null, capas: p.capas ?? null }),
+    },
+    {
+      tablaDestino: 'cat_aislacion_ext',
+      items: aislacionesExt,
+      mapPayload: (a) => ({ codigo: a.codigo, descripcion: a.descripcion ?? null }),
+    },
+    {
+      tablaDestino: 'cat_porcentaje_nde',
+      items: porcentajesNde,
+      mapPayload: (p) => ({ codigo: p.codigo, porcentaje: p.porcentaje ?? null, descripcion: p.descripcion ?? null }),
+    },
+    {
+      tablaDestino: 'cat_tipo_prueba',
+      items: tiposPrueba,
+      mapPayload: (t) => ({ codigo: t.codigo, descripcion: t.descripcion ?? null }),
+    },
+    {
+      tablaDestino: 'cat_tipo_union',
+      items: tiposUnion,
+      mapPayload: (t) => ({ codigo: t.codigo, descripcion: t.descripcion ?? null }),
+    },
+  ];
+
+  for (const { tablaDestino, items, mapPayload } of catalogosAProponer) {
+    if (items.length === 0) continue;
+    const filas = items.map((item) => ({
+      payload: mapPayload(item),
+      fuente: { ...fuenteBase, paginas: item.paginas ?? [], contexto: item.contexto ?? null },
+      confianza: typeof item.confianza === 'number' ? item.confianza : null,
     }));
     const { data: loteId, error: errLote } = await supabase.rpc('importar_crear_lote_ia', {
       p_proyecto_id: doc.proyecto_id,
-      p_tabla_destino: 'cat_clase_piping',
+      p_tabla_destino: tablaDestino,
       p_documento_id: documentoId,
       p_filas: filas,
     });
-    if (errLote) throw new Error(`Error creando lote de clases: ${errLote.message}`);
+    if (errLote) throw new Error(`Error creando lote de ${tablaDestino}: ${errLote.message}`);
     loteIds.push(loteId);
   }
 
@@ -195,7 +226,7 @@ async function procesarDocumento(jwt, documentoId) {
     await supabase.from('doc_biblioteca')
       .update({
         estado_procesamiento: 'error',
-        error_detalle: 'Gemini no encontró fluidos, clases de piping ni texto indexable en el documento.',
+        error_detalle: 'Gemini no encontró catálogos técnicos (fluidos, clases, NPS, pintura, aislación, NDE, prueba, unión) ni texto indexable en el documento.',
         n_paginas: nPaginas ?? paginasTexto.length,
       })
       .eq('id', documentoId);
