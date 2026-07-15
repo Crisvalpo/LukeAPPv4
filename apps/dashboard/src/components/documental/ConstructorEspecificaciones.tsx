@@ -122,20 +122,59 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
     fetchCatalogos();
   }, [proyectoId]);
 
-  // Simular sugerencias de IA leyendo el lote asociado o metadatos de doc_chunks
+  // Leer sugerencias reales de la IA desde las tablas de staging del documento
   useEffect(() => {
     const fetchSugerenciasIA = async () => {
       setLoadingIA(true);
-      // Mocks de sugerencias Gemini simuladas de la spec
-      setTimeout(() => {
-        setSugerencias([
-          { tipo: 'fluido', codigo: 'HC', descripcion: 'Hidrocarburos líquidos', confianza: 0.95 },
-          { tipo: 'fluido', codigo: 'H2', descripcion: 'Hidrógeno gaseoso de alta presión', confianza: 0.92 },
-          { tipo: 'clase', codigo: 'A1A', descripcion: 'Clase ASME B31.3 Acero Carbono 150# RF', presion_max: 19.6, temp_max: 200, confianza: 0.88 },
-          { tipo: 'clase', codigo: 'A2B', descripcion: 'Clase ASME B31.3 Acero Inoxidable 300# RF', presion_max: 51.1, temp_max: 350, confianza: 0.89 }
-        ]);
+      try {
+        // 1. Buscar lotes asociados al documento
+        const { data: lotes, error: errLotes } = await supabase
+          .from('import_lotes')
+          .select('id, import_perfiles(tabla_destino)')
+          .eq('documento_id', documentoId);
+
+        if (errLotes) throw errLotes;
+
+        if (!lotes || lotes.length === 0) {
+          setSugerencias([]);
+          return;
+        }
+
+        const loteIds = lotes.map((l) => l.id);
+
+        // 2. Traer las filas de esos lotes
+        const { data: filas, error: errFilas } = await supabase
+          .from('import_filas')
+          .select('*, import_lotes(perfil_id, import_perfiles(tabla_destino))')
+          .in('lote_id', loteIds)
+          .order('nro_fila');
+
+        if (errFilas) throw errFilas;
+
+        // 3. Mapear las filas a sugerencias
+        const mapeadas: SugerenciaIA[] = (filas || []).map((f: any) => {
+          const lote = Array.isArray(f.import_lotes) ? f.import_lotes[0] : f.import_lotes;
+          const perfil = lote?.import_perfiles;
+          const tabla = Array.isArray(perfil) ? perfil[0]?.tabla_destino : perfil?.tabla_destino;
+          const esFluido = tabla === 'cat_fluido_servicio';
+
+          return {
+            tipo: esFluido ? 'fluido' : 'clase',
+            codigo: (f.payload?.codigo || '').toUpperCase(),
+            descripcion: f.payload?.descripcion || '',
+            presion_max: f.payload?.presion_max != null ? parseFloat(f.payload.presion_max) : undefined,
+            temp_max: f.payload?.temp_max != null ? parseFloat(f.payload.temp_max) : undefined,
+            confianza: f.confianza ?? 0.9,
+          };
+        });
+
+        setSugerencias(mapeadas);
+      } catch (err) {
+        console.error('[ConstructorEspecificaciones] error fetching real suggestions:', err);
+        setSugerencias([]);
+      } finally {
         setLoadingIA(false);
-      }, 1000);
+      }
     };
     fetchSugerenciasIA();
   }, [documentoId]);
@@ -474,7 +513,9 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
             {loadingIA ? (
               <div className="text-xs text-muted-foreground font-medium py-2">Leyendo documento con IA...</div>
             ) : sugerencias.length === 0 ? (
-              <div className="text-xs text-muted-foreground font-medium py-2">No se encontraron sugerencias de catálogos en esta sección.</div>
+              <div className="text-xs text-amber-400/90 bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg leading-relaxed font-medium">
+                ⚠️ Este documento aún no ha sido procesado por IA. Ve a la <strong>Biblioteca Documental</strong> y haz clic en <strong>Procesar con IA</strong> para extraer los datos y generar las propuestas reales.
+              </div>
             ) : (
               <div className="grid gap-2">
                 {sugerencias
