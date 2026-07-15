@@ -2,6 +2,7 @@
   "name": "lukeapp-v4",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@11.13.0",
   "description": "LukeAPP v4 — Plataforma multi-proyecto de trazabilidad de montaje industrial (piping y mecánica)",
   "scripts": {
     "lint": "pnpm -r lint",
