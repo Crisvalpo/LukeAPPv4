@@ -173,7 +173,6 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
     setGuardandoFila(true);
     setError(null);
     try {
-      const tabla = loteActivo?.tabla_destino;
       const campoClave = 'codigo';
       const nuevoCodigo = (payloadEditado[campoClave] ?? '').toUpperCase().trim();
 
