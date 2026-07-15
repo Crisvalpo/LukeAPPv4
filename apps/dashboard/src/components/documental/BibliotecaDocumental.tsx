@@ -101,6 +101,20 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
   useEffect(() => { fetchDocumentos(); }, [fetchDocumentos]);
 
+  // Polling automático si hay documentos procesándose de fondo
+  useEffect(() => {
+    const hayProcesando = documentos.some(
+      (doc) => doc.estado_procesamiento === 'procesando' || doc.estado_procesamiento === 'extrayendo'
+    );
+    if (!hayProcesando) return;
+
+    const interval = setInterval(() => {
+      fetchDocumentos();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [documentos, fetchDocumentos]);
+
   const handleSubir = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoTitulo.trim() || !archivo) return;
@@ -353,6 +367,10 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
                   {doc.estado_procesamiento === 'error' && doc.error_detalle && (
                     <div className="text-red-400 text-[10px] leading-tight mb-2 truncate" title={doc.error_detalle}>{doc.error_detalle}</div>
+                  )}
+
+                  {(doc.estado_procesamiento === 'procesando' || doc.estado_procesamiento === 'extrayendo') && doc.error_detalle && (
+                    <div className="text-accent text-[10px] font-semibold leading-tight mb-2 animate-pulse">{doc.error_detalle}</div>
                   )}
 
                   <div className="text-[9px] text-slate-500 font-medium">

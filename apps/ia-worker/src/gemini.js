@@ -142,15 +142,21 @@ async function llamarGemini(modelo, prompt, responseSchema, pdfBase64) {
   }
 }
 
-export async function extraerDeGemini(pdfBase64) {
+export async function extraerDeGemini(pdfBase64, onProgreso) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada en el servidor');
 
+  if (onProgreso) {
+    await onProgreso('Fase 1: Extrayendo Catálogo con Gemini Pro...');
+  }
   console.log('[ia-worker] Iniciando Fase 1: Extracción de fluidos y clases con Gemini Pro...');
   let catalogo;
   try {
     catalogo = await llamarGemini(GEMINI_MODEL_PRO, PROMPT_CATALOGO, SCHEMA_CATALOGO, pdfBase64);
   } catch (err) {
     console.warn('[ia-worker] Gemini Pro falló para la extracción del catálogo. Intentando fallback con Flash...', err.message);
+    if (onProgreso) {
+      await onProgreso('Fase 1 (Fallback): Extrayendo Catálogo con Gemini Flash...');
+    }
     catalogo = await llamarGemini(GEMINI_MODEL, PROMPT_CATALOGO, SCHEMA_CATALOGO, pdfBase64);
   }
 
@@ -185,7 +191,11 @@ export async function extraerDeGemini(pdfBase64) {
     const fin = Math.min(i + TAMANIO_LOTE - 1, nPaginas);
     console.log(`[ia-worker] Extrayendo páginas ${inicio} a ${fin} de ${nPaginas}...`);
 
-    const promptLote = `Extrae el TEXTO COMPLETO de las páginas desde la ${inicio} hasta la ${fin} (inclusive) de este documento en el arreglo "paginas_texto". Para cada página, especifica el "numero_pagina" real (empezando en 1) y el "texto" plano (sin marcas de agua ni encabezados repetitivos). Sé detallado y completo. Responde sólo con el JSON solicitado.`;
+    if (onProgreso) {
+      await onProgreso(`Fase 2: Extrayendo texto páginas ${inicio}-${fin} de ${nPaginas}...`);
+    }
+
+    const promptLote = `Extrae el TEXTO COMPLETO de las páginas desde la ${inicio} hasta la ${fin} (inclusive) de este documento en el arreglo "paginas_texto". Para cada página, especifica el "numero_pagina" real (empezando en 1) and el "texto" plano (sin marcas de agua ni encabezados repetitivos). Sé detallado y completo. Responde sólo con el JSON solicitado.`;
 
     try {
       const resLote = await llamarGemini(GEMINI_MODEL, promptLote, SCHEMA_TEXTO, pdfBase64);
@@ -197,6 +207,9 @@ export async function extraerDeGemini(pdfBase64) {
       // Fallback: procesar página por página del lote para no perder todo el lote
       for (let p = inicio; p <= fin; p++) {
         try {
+          if (onProgreso) {
+            await onProgreso(`Fase 2 (Fallback): Página ${p} de ${nPaginas}...`);
+          }
           const promptIndiv = `Extrae el TEXTO COMPLETO de la página ${p} de este documento en el arreglo "paginas_texto". Especifica el "numero_pagina" real (que es ${p}) y el "texto" plano. Responde sólo con el JSON solicitado.`;
           const resIndiv = await llamarGemini(GEMINI_MODEL, promptIndiv, SCHEMA_TEXTO, pdfBase64);
           if (resIndiv && Array.isArray(resIndiv.paginas_texto)) {

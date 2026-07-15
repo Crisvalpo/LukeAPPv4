@@ -115,7 +115,11 @@ async function procesarDocumento(jwt, documentoId) {
     .update({ estado_procesamiento: 'extrayendo' })
     .eq('id', documentoId);
 
-  const { fluidos, clases, paginasTexto, nPaginas } = await extraerDeGemini(pdfBase64);
+  const { fluidos, clases, paginasTexto, nPaginas } = await extraerDeGemini(pdfBase64, async (progresoMsg) => {
+    await supabase.from('doc_biblioteca')
+      .update({ error_detalle: progresoMsg })
+      .eq('id', documentoId);
+  });
 
   const fuenteBase = { documento_id: documentoId, titulo: doc.titulo };
   const loteIds = [];
@@ -178,6 +182,7 @@ async function procesarDocumento(jwt, documentoId) {
       estado_procesamiento: loteIds.length > 0 ? 'lote_generado' : 'procesado',
       n_paginas: nPaginas ?? paginasTexto.length,
       n_chunks: nChunks,
+      error_detalle: null,
       metadata: { ...(doc.metadata ?? {}), ...(loteIds.length > 0 ? { lotes_ia: loteIds } : {}) },
     })
     .eq('id', documentoId);
