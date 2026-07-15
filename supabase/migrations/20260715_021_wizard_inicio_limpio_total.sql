@@ -34,10 +34,10 @@ BEGIN
     SELECT tabla, payload FROM lukeapp.plantillas_catalogo
     WHERE (industria::text) = p_industria AND activo = true AND tabla = 'cat_diametros_nps'
   LOOP
-    FOR v_item IN SELECT * FROM jsonb_array_elements(v_plantilla.payload)
+    FOR v_item IN SELECT value FROM jsonb_array_elements(v_plantilla.payload)
     LOOP
       INSERT INTO lukeapp.cat_diametros_nps (proyecto_id, nps, nps_mm, creado_por)
-      VALUES (v_proyecto_id, v_item->>'nps', (v_item->>'nps_mm')::numeric, v_creador)
+      VALUES (v_proyecto_id, v_item.value->>'nps', (v_item.value->>'nps_mm')::numeric, v_creador)
       ON CONFLICT DO NOTHING;
     END LOOP;
   END LOOP;
