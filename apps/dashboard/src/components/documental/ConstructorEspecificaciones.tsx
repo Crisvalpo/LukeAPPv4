@@ -520,29 +520,41 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
               <div className="grid gap-2">
                 {sugerencias
                   .filter((s) => (pestana === 'fluidos' ? s.tipo === 'fluido' : s.tipo === 'clase'))
-                  .map((s, idx) => (
-                    <div key={idx} className="bg-card border border-border/80 p-3 rounded flex items-center justify-between text-xs transition-colors hover:border-accent">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-accent bg-accent/10 px-1.5 py-0.5 rounded text-[10px]">
-                            {s.codigo}
+                  .map((s, idx) => {
+                    const yaRegistrado = s.tipo === 'fluido'
+                      ? fluidos.some((f) => f.codigo.toUpperCase() === s.codigo.toUpperCase())
+                      : clases.some((c) => c.codigo.toUpperCase() === s.codigo.toUpperCase());
+
+                    return (
+                      <div key={idx} className="bg-card border border-border/80 p-3 rounded flex items-center justify-between text-xs transition-colors hover:border-accent">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-accent bg-accent/10 px-1.5 py-0.5 rounded text-[10px]">
+                              {s.codigo}
+                            </span>
+                            <span className="font-bold text-white">{s.descripcion}</span>
+                          </div>
+                          {s.tipo === 'clase' && (s.presion_max || s.temp_max) && (
+                            <span className="text-[10px] text-muted-foreground mt-0.5">
+                              P. Max: {s.presion_max} MPa | T. Max: {s.temp_max}°C
+                            </span>
+                          )}
+                          <span className="text-[9px] text-emerald-400 font-bold mt-0.5">
+                            Confianza IA: {(s.confianza * 100).toFixed(0)}%
                           </span>
-                          <span className="font-bold text-white">{s.descripcion}</span>
                         </div>
-                        {s.tipo === 'clase' && (s.presion_max || s.temp_max) && (
-                          <span className="text-[10px] text-muted-foreground mt-0.5">
-                            P. Max: {s.presion_max} MPa | T. Max: {s.temp_max}°C
+                        {yaRegistrado ? (
+                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                            ✓ Agregado
                           </span>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={() => handleAplicarSugerencia(s)} className="py-1">
+                            Usar
+                          </Button>
                         )}
-                        <span className="text-[9px] text-emerald-400 font-bold mt-0.5">
-                          Confianza IA: {(s.confianza * 100).toFixed(0)}%
-                        </span>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => handleAplicarSugerencia(s)} className="py-1">
-                        Usar
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             )}
           </div>
