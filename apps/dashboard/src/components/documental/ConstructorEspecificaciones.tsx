@@ -74,11 +74,15 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
       
       if (!error && data) {
         setTituloDoc(data.titulo);
-        // Descargar URL pública temporal
-        const { data: dataUrl } = supabase.storage
+        // Descargar URL firmada temporal (validez 1 hora)
+        const { data: dataUrl, error: errSigned } = await supabase.storage
           .from('documentos')
-          .getPublicUrl(data.storage_path);
-        if (dataUrl) setDocumentoUrl(dataUrl.publicUrl);
+          .createSignedUrl(data.storage_path, 3600);
+        if (!errSigned && dataUrl) {
+          setDocumentoUrl(dataUrl.signedUrl);
+        } else {
+          console.error('[ConstructorEspecificaciones] error generating signed URL:', errSigned);
+        }
 
         // Cargar anotaciones previas
         if (data.anotaciones && Array.isArray(data.anotaciones)) {
