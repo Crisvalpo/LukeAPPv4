@@ -265,7 +265,7 @@ function App() {
                     onClick={() => { setVista('ingesta_ia'); setDocSeleccionado(null); }}
                     className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
                   >
-                    Especificaciones IA
+                    Especificaciones
                   </Button>
                   <Button
                     variant={vista === 'cubicador' ? 'primary' : 'ghost'}

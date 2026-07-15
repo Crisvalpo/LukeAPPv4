@@ -195,7 +195,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
     <div className="flex-grow p-6 space-y-6 overflow-y-auto bg-background text-foreground font-sans">
       <div className="flex justify-between items-center border-b border-border pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Ingesta Documental con IA</h2>
+          <h2 className="text-xl font-bold text-white tracking-tight">Ingesta Documental</h2>
           <p className="text-xs text-muted-foreground mt-1">Sube especificaciones y adendas en PDF para extraer las especificaciones.</p>
         </div>
       </div>

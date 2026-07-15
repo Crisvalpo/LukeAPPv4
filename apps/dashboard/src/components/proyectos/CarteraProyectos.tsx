@@ -121,7 +121,7 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
           ← Volver
         </Button>
         <Button variant="primary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
-          Especificaciones IA
+          Especificaciones
         </Button>
         <Button variant="secondary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
           Datos
