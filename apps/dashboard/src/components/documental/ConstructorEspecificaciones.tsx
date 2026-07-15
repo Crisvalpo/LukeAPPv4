@@ -63,6 +63,7 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
   const [dibujando, setDibujando] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [modoDibujo, setModoDibujo] = useState(false);
 
   useEffect(() => {
     const fetchDoc = async () => {
@@ -289,23 +290,43 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
         </div>
 
         {/* Herramientas Marcador Fluorescente */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground select-none">Destacador:</span>
-          <div className="flex items-center gap-1.5 bg-card border border-border p-1 rounded-md">
-            {(['green', 'orange', 'pink'] as const).map((color) => (
-              <button
-                key={color}
-                onClick={() => setColorMarcador(color)}
-                className={`w-5 h-5 rounded-full border transition-all ${
-                  color === 'green' ? 'bg-emerald-500' : color === 'orange' ? 'bg-orange-500' : 'bg-pink-500'
-                } ${
-                  colorMarcador === color 
-                    ? 'ring-2 ring-accent scale-110 border-white' 
-                    : 'border-transparent hover:scale-105'
-                }`}
-              />
-            ))}
-          </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setModoDibujo(!modoDibujo)}
+            className={`px-3 py-1.5 text-xs font-extrabold rounded border transition-all flex items-center gap-1.5 ${
+              modoDibujo
+                ? 'bg-accent text-white border-accent shadow-md shadow-accent/20'
+                : 'bg-card text-muted-foreground border-border hover:text-white'
+            }`}
+          >
+            {modoDibujo ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                🎨 Modo Destacar: Activo
+              </>
+            ) : (
+              '🔍 Modo Navegar (Scroll/Zoom)'
+            )}
+          </button>
+
+          {modoDibujo && (
+            <div className="flex items-center gap-1.5 bg-card border border-border p-1 rounded-md animate-fade-in">
+              {(['green', 'orange', 'pink'] as const).map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setColorMarcador(color)}
+                  className={`w-5 h-5 rounded-full border transition-all ${
+                    color === 'green' ? 'bg-emerald-500' : color === 'orange' ? 'bg-orange-500' : 'bg-pink-500'
+                  } ${
+                    colorMarcador === color 
+                      ? 'ring-2 ring-accent scale-110 border-white' 
+                      : 'border-transparent hover:scale-105'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
           <Button variant="outline" size="sm" onClick={handleBorrarTrazos} className="py-1">
             Limpiar Destacados
           </Button>
@@ -320,7 +341,7 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
             <>
               {/* Contenedor PDF Iframe */}
               <iframe
-                src={`${documentoUrl}#toolbar=0&navpanes=0`}
+                src={documentoUrl}
                 className="w-full h-full border-none pointer-events-auto"
                 title="Visor Especificación"
               />
@@ -331,7 +352,9 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className="absolute inset-0 cursor-crosshair z-25 pointer-events-auto"
+                className={`absolute inset-0 cursor-crosshair z-25 ${
+                  modoDibujo ? 'pointer-events-auto' : 'pointer-events-none'
+                }`}
               />
             </>
           ) : (
