@@ -188,6 +188,210 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   const [filtroAccion, setFiltroAccion] = useState<Accion | 'todas'>('todas');
   const [aplicando, setAplicando] = useState(false);
 
+  // Estados de resolución de conflictos
+  const [metodoResolucion, setMetodoResolucion] = useState<'justificar' | 'reasignar' | 'anular'>('justificar');
+  const [justificacionConflicto, setJustificacionConflicto] = useState('');
+  const [spoolDestino, setSpoolDestino] = useState('');
+  const [juntaDestino, setJuntaDestino] = useState('');
+  const [resolviendoConflicto, setResolviendoConflicto] = useState(false);
+
+  const handleResolverConflicto = async (fila: FilaImport) => {
+    if (!justificacionConflicto.trim()) {
+      alert('Por favor ingrese una justificación o motivo.');
+      return;
+    }
+    setResolviendoConflicto(true);
+    setError(null);
+
+    try {
+      let detalleResuelto = '';
+
+      if (metodoResolucion === 'justificar') {
+        detalleResuelto = `RESUELTO (Justificado): ${justificacionConflicto.trim()}`;
+      } else if (metodoResolucion === 'anular') {
+        // 1. Obtener junta(s) vieja(s)
+        let juntaIds: string[] = [];
+        if (tablaDestino === 'list_juntas') {
+          const { data: j } = await supabase
+            .from('list_juntas')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('id_spool', fila.payload.id_spool)
+            .eq('numero_junta', fila.payload.numero_junta)
+            .maybeSingle();
+          if (j) juntaIds.push(j.id);
+        } else if (tablaDestino === 'list_spools') {
+          const { data: s } = await supabase
+            .from('list_spools')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('id_spool', fila.payload.id_spool)
+            .maybeSingle();
+          if (s) {
+            const { data: js } = await supabase.from('list_juntas').select('id').eq('spool_id', s.id);
+            if (js) juntaIds = js.map((j: any) => j.id);
+          }
+        } else if (tablaDestino === 'list_isos') {
+          const { data: i } = await supabase
+            .from('list_isos')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('id_iso', fila.payload.id_iso)
+            .maybeSingle();
+          if (i) {
+            const { data: js } = await supabase
+              .from('list_juntas')
+              .select('id, list_spools!inner(iso_id)')
+              .eq('list_spools.iso_id', i.id);
+            if (js) juntaIds = js.map((j: any) => j.id);
+          }
+        } else if (tablaDestino === 'list_lineas') {
+          const { data: l } = await supabase
+            .from('list_lineas')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('id_linea', fila.payload.id_linea)
+            .maybeSingle();
+          if (l) {
+            const { data: js } = await supabase.from('list_juntas').select('id').eq('linea_id', l.id);
+            if (js) juntaIds = js.map((j: any) => j.id);
+          }
+        }
+
+        // 2. Eliminar avances de esas juntas
+        if (juntaIds.length > 0) {
+          const { error: errDel } = await supabase
+            .from('reg_ejecucion_juntas')
+            .delete()
+            .in('junta_id', juntaIds);
+          if (errDel) throw errDel;
+        }
+
+        detalleResuelto = `RESUELTO (Anulado): ${justificacionConflicto.trim()}`;
+      } else if (metodoResolucion === 'reasignar') {
+        if (!spoolDestino.trim() || !juntaDestino.trim()) {
+          throw new Error('Debe ingresar el spool y junta de destino para reasignar.');
+        }
+
+        // 1. Obtener junta destino
+        const { data: jDest, error: errDest } = await supabase
+          .from('list_juntas')
+          .select('id')
+          .eq('proyecto_id', proyectoId)
+          .eq('id_spool', spoolDestino.trim().toUpperCase())
+          .eq('numero_junta', juntaDestino.trim().toUpperCase())
+          .maybeSingle();
+        
+        if (errDest) throw errDest;
+        if (!jDest) {
+          throw new Error(`La junta de destino "${spoolDestino.trim().toUpperCase()}_${juntaDestino.trim().toUpperCase()}" no existe o no está activa en el catálogo.`);
+        }
+
+        // 2. Obtener junta vieja
+        let juntaViejaId: string | null = null;
+        if (tablaDestino === 'list_juntas') {
+          const { data: jOld } = await supabase
+            .from('list_juntas')
+            .select('id')
+            .eq('proyecto_id', proyectoId)
+            .eq('id_spool', fila.payload.id_spool)
+            .eq('numero_junta', fila.payload.numero_junta)
+            .maybeSingle();
+          if (jOld) juntaViejaId = jOld.id;
+        }
+
+        if (!juntaViejaId) {
+          throw new Error('Solo se puede reasignar avances directamente para conflictos a nivel de Juntas.');
+        }
+
+        // 3. Reasignar avance
+        const { error: errUpd } = await supabase
+          .from('reg_ejecucion_juntas')
+          .update({ junta_id: jDest.id })
+          .eq('junta_id', juntaViejaId);
+        if (errUpd) throw errUpd;
+
+        detalleResuelto = `RESUELTO (Reasignado a ${spoolDestino.trim().toUpperCase()}_${juntaDestino.trim().toUpperCase()}): ${justificacionConflicto.trim()}`;
+      }
+
+      // Actualizar en base de datos
+      const { error: errFila } = await supabase
+        .from('import_filas')
+        .update({
+          error_detalle: detalleResuelto,
+          aprobada: true
+        })
+        .eq('id', fila.id);
+
+      if (errFila) throw errFila;
+
+      // Actualizar estado local
+      setTablasProcesadas((prev) => {
+        const current = prev[tablaDestino];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [tablaDestino]: {
+            ...current,
+            filas: current.filas.map((f) => 
+              f.id === fila.id 
+                ? { ...f, aprobada: true, error_detalle: detalleResuelto } 
+                : f
+            ),
+          },
+        };
+      });
+
+      setJustificacionConflicto('');
+      setSpoolDestino('');
+      setJuntaDestino('');
+      alert('Conflicto resuelto y aprobado exitosamente.');
+
+    } catch (e: any) {
+      alert(e.message || 'Error al resolver conflicto.');
+    } finally {
+      setResolviendoConflicto(false);
+    }
+  };
+
+  const handleExportarExcel = () => {
+    const tableData = tablasProcesadas[tablaDestino];
+    if (!tableData || tableData.filas.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+
+    const rows = tableData.filas.map((f) => {
+      const flat: Record<string, any> = {
+        'Nro Fila': Math.abs(f.nro_fila),
+        'Clave Natural': f.clave_natural || '',
+        'Acción Detectada': f.accion ? f.accion.toUpperCase() : 'SIN CAMBIO',
+        'Estado Aprobación': f.aprobada === true ? 'APROBADO' : f.aprobada === false ? 'RECHAZADO' : 'PENDIENTE',
+        'Detalle Error/Conflicto': f.error_detalle || ''
+      };
+
+      if (f.payload) {
+        Object.entries(f.payload).forEach(([k, v]) => {
+          flat[`Payload - ${k}`] = v;
+        });
+      }
+
+      if (f.diff) {
+        Object.entries(f.diff).forEach(([k, v]: [string, any]) => {
+          flat[`Diff - ${k} (Antes)`] = v.antes;
+          flat[`Diff - ${k} (Después)`] = v.despues;
+        });
+      }
+
+      return flat;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, TAB_LABELS[tablaDestino]);
+    XLSX.writeFile(wb, `Reporte_Cambios_${TAB_LABELS[tablaDestino]}_${Date.now()}.xlsx`);
+  };
+
   // Estados de conexión locales (SharePoint mock persistente en localStorage)
   const [syncStates, setSyncStates] = useState<Record<TablaDestino, ConnectionState>>({
     list_lineas: { lastSync: null, status: 'Pendiente' },
@@ -816,6 +1020,14 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                   ⚠️ {currentResumen.n_conflictos} conflicto(s)
                 </span>
               ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportarExcel}
+                className="py-1 px-3 text-[10px] font-bold"
+              >
+                📥 Exportar Reporte (.xlsx)
+              </Button>
             </div>
           </div>
 
@@ -904,6 +1116,106 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
                     }`}>
                       <strong>{seleccionada.error_detalle.startsWith('CONFLICTO') ? 'Alerta de conflicto:' : 'Error detectado:'}</strong>
                       <p className="mt-1">{seleccionada.error_detalle}</p>
+                    </div>
+                  )}
+
+                  {seleccionada.error_detalle && seleccionada.error_detalle.startsWith('CONFLICTO') && fase === 'diff' && (
+                    <div className="bg-card border border-amber-500/20 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-400 text-sm">⚠️</span>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Resolución de Conflicto de Avance (OT)</h4>
+                      </div>
+
+                      <div className="flex gap-4 text-xs font-semibold text-foreground/90 select-none pb-2 border-b border-border/40">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="metodo_res" 
+                            value="justificar" 
+                            checked={metodoResolucion === 'justificar'}
+                            onChange={() => setMetodoResolucion('justificar')}
+                            className="accent-accent"
+                          />
+                          Justificar y Mantener
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="metodo_res" 
+                            value="anular" 
+                            checked={metodoResolucion === 'anular'}
+                            onChange={() => setMetodoResolucion('anular')}
+                            className="accent-accent"
+                          />
+                          Anular Avances
+                        </label>
+                        {tablaDestino === 'list_juntas' && (
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="metodo_res" 
+                              value="reasignar" 
+                              checked={metodoResolucion === 'reasignar'}
+                              onChange={() => setMetodoResolucion('reasignar')}
+                              className="accent-accent"
+                            />
+                            Reasignar Avance
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        {metodoResolucion === 'reasignar' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[10px] text-muted-foreground font-bold uppercase">Spool Destino</label>
+                              <input 
+                                type="text" 
+                                placeholder="ej: SPOOL-01"
+                                value={spoolDestino}
+                                onChange={(e) => setSpoolDestino(e.target.value)}
+                                className="bg-panel border border-border text-foreground px-3 py-1.5 rounded text-xs font-semibold uppercase focus:outline-none"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[10px] text-muted-foreground font-bold uppercase">N° Junta Destino</label>
+                              <input 
+                                type="text" 
+                                placeholder="ej: J-01"
+                                value={juntaDestino}
+                                onChange={(e) => setJuntaDestino(e.target.value)}
+                                className="bg-panel border border-border text-foreground px-3 py-1.5 rounded text-xs font-semibold uppercase focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-muted-foreground font-bold uppercase">
+                            {metodoResolucion === 'justificar' ? 'Justificación técnica de la retención' : 
+                             metodoResolucion === 'anular' ? 'Motivo de la anulación del avance en terreno' : 
+                             'Motivo de la reasignación de avance'}
+                          </label>
+                          <input 
+                            type="text" 
+                            placeholder="Ingrese los comentarios de respaldo..."
+                            value={justificacionConflicto}
+                            onChange={(e) => setJustificacionConflicto(e.target.value)}
+                            className="bg-panel border border-border text-foreground px-3 py-2 rounded text-xs font-medium focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <Button 
+                            variant="primary" 
+                            size="sm"
+                            disabled={resolviendoConflicto}
+                            onClick={() => handleResolverConflicto(seleccionada)}
+                          >
+                            {resolviendoConflicto ? 'Procesando resolución...' : 'Resolver y Aprobar Fila'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
 

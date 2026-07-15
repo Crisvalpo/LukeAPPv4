@@ -10,6 +10,9 @@ import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
+import { ConfiguracionIntegracion } from './components/proyectos/ConfiguracionIntegracion';
+import { ConstructorEspecificaciones } from './components/documental/ConstructorEspecificaciones';
+import { BibliotecaPIDs } from './components/documental/BibliotecaPIDs';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
 import { HeaderActionsContext } from './hooks/useHeaderActions';
@@ -18,7 +21,7 @@ import { HeaderActionsContext } from './hooks/useHeaderActions';
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
 const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'configuracion_integracion';
 
 interface Perfil {
   estado_cuenta: 'pendiente' | 'aprobado' | 'rechazado';
@@ -120,6 +123,21 @@ function App() {
   const handleAbrirCubicador = (proyectoId: string) => {
     setProyectoActivo(proyectoId);
     setVista('cubicador');
+  };
+
+  const handleAbrirPids = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('biblioteca_pids');
+  };
+
+  const handleAbrirConfig = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('configuracion_integracion');
+  };
+
+  const handleAbrirConstructor = (docId: string) => {
+    setDocSeleccionado(docId);
+    setVista('constructor_specs');
   };
 
   const handleSelectLote = (docId: string) => {
@@ -231,13 +249,51 @@ function App() {
             <span className="text-accent">v4</span>
           </div>
           {vista !== 'cartera' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToCartera}
-            >
-              ← Proyectos
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackToCartera}
+              >
+                ← Proyectos
+              </Button>
+              {proyectoActivo && (
+                <div className="flex items-center gap-1 bg-card/40 border border-border/80 p-0.5 rounded-lg ml-2">
+                  <Button
+                    variant={vista === 'cubicador' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('cubicador'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Cubicador
+                  </Button>
+                  <Button
+                    variant={vista === 'ingesta_ia' || vista === 'revision_lote' || vista === 'constructor_specs' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('ingesta_ia'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Especificaciones IA
+                  </Button>
+                  <Button
+                    variant={vista === 'biblioteca_pids' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('biblioteca_pids'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Planos P&ID
+                  </Button>
+                  <Button
+                    variant={vista === 'configuracion_integracion' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('configuracion_integracion'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Integración
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -331,7 +387,13 @@ function App() {
       {/* Contenido Principal */}
       <main className="flex-grow">
         {vista === 'cartera' && (
-          <CarteraProyectos onAbrirIngesta={handleAbrirIngesta} onAbrirCubicador={handleAbrirCubicador} esGerencia={perfil?.acceso_global ?? false} />
+          <CarteraProyectos 
+            onAbrirIngesta={handleAbrirIngesta} 
+            onAbrirCubicador={handleAbrirCubicador} 
+            onAbrirPids={handleAbrirPids}
+            onAbrirConfig={handleAbrirConfig}
+            esGerencia={perfil?.acceso_global ?? false} 
+          />
         )}
 
         {vista === 'solicitudes' && perfil?.puede_administrar_accesos && (
@@ -345,12 +407,34 @@ function App() {
           <BibliotecaDocumental
             proyectoId={proyectoActivo}
             onSelectLote={handleSelectLote}
+            onAbrirConstructor={handleAbrirConstructor}
           />
         )}
 
         {vista === 'cubicador' && proyectoActivo && (
           <CubicadorImport
             proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'biblioteca_pids' && proyectoActivo && (
+          <BibliotecaPIDs
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'constructor_specs' && docSeleccionado && (
+          <ConstructorEspecificaciones
+            proyectoId={proyectoActivo || ''}
+            documentoId={docSeleccionado}
+            onBack={handleBackToBiblioteca}
+          />
+        )}
+
+        {vista === 'configuracion_integracion' && proyectoActivo && (
+          <ConfiguracionIntegracion
+            proyectoId={proyectoActivo}
+            onClose={handleBackToCartera}
           />
         )}
 

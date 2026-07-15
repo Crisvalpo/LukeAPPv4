@@ -37,10 +37,12 @@ const ESTADO_META: Record<string, { label: string; color: string }> = {
 interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
   onAbrirCubicador: (proyectoId: string) => void;
+  onAbrirPids: (proyectoId: string) => void;
+  onAbrirConfig: (proyectoId: string) => void;
   esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, esGerencia }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirConfig, esGerencia }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,13 +118,19 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     seleccionado ? (
       <>
         <Button variant="outline" size="sm" onClick={() => setSeleccionado(null)}>
-          ← Volver a Proyectos
+          ← Volver
         </Button>
         <Button variant="primary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
           Importar Cubicación
         </Button>
         <Button variant="secondary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
           Ingesta Documental IA
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onAbrirPids(seleccionado.id)}>
+          Planos P&ID
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onAbrirConfig(seleccionado.id)}>
+          Configuración Integración
         </Button>
         {esGerencia && (
           <Button

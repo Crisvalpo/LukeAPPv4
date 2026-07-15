@@ -3,7 +3,6 @@ import { supabase } from '../../supabaseClient';
 import { sanitizarNombreArchivo } from '../../lib/storagePath';
 import { Button } from '../ui/Button';
 import { useHeaderActions } from '../../hooks/useHeaderActions';
-import './documental.css';
 
 export interface Documento {
   id: string;
@@ -23,6 +22,7 @@ export interface Documento {
 interface BibliotecaDocumentalProps {
   proyectoId: string;
   onSelectLote: (docId: string) => void;
+  onAbrirConstructor?: (docId: string) => void;
 }
 
 interface ResultadoBusqueda {
@@ -37,7 +37,7 @@ interface ResultadoBusqueda {
 
 const IA_WORKER_URL = import.meta.env.VITE_IA_WORKER_URL as string | undefined;
 
-export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proyectoId, onSelectLote }) => {
+export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proyectoId, onSelectLote, onAbrirConstructor }) => {
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,14 +137,14 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
   const getStatusBadgeClass = (status: Documento['estado_procesamiento']) => {
     switch (status) {
-      case 'pendiente': return 'badge status-pendiente';
-      case 'procesando': return 'badge status-procesando';
-      case 'extrayendo': return 'badge status-extrayendo';
-      case 'lote_generado': return 'badge status-lote-generado';
-      case 'procesado': return 'badge status-completado';
-      case 'completado': return 'badge status-completado';
-      case 'error': return 'badge status-error';
-      default: return 'badge';
+      case 'pendiente': return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
+      case 'procesando': return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+      case 'extrayendo': return 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+      case 'lote_generado': return 'bg-sky-500/10 text-sky-400 border border-sky-500/20';
+      case 'procesado': return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      case 'completado': return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      case 'error': return 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+      default: return 'bg-slate-500/10 text-slate-400';
     }
   };
 
@@ -192,43 +192,44 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
   );
 
   return (
-    <div className="doc-section">
-      <div className="doc-header">
+    <div className="flex-grow p-6 space-y-6 overflow-y-auto bg-background text-foreground font-sans">
+      <div className="flex justify-between items-center border-b border-border pb-4">
         <div>
-          <h2>Ingesta Documental con IA</h2>
-          <p className="doc-subheader">Sube especificaciones y adendas en PDF para extraer clases de piping y fluidos con Gemini, y poblar catálogos con aprobación humana.</p>
+          <h2 className="text-xl font-bold text-white tracking-tight">Ingesta Documental con IA</h2>
+          <p className="text-xs text-muted-foreground mt-1">Sube especificaciones y adendas en PDF para extraer clases de piping y fluidos con Gemini, y poblar catálogos con aprobación humana.</p>
         </div>
       </div>
 
-      <form className="rag-search-bar" onSubmit={handleBuscar}>
+      <form className="flex gap-2 items-center bg-card border border-border p-1.5 rounded-lg max-w-4xl" onSubmit={handleBuscar}>
         <input
           type="text"
           placeholder="Buscar en el contenido de todos los documentos indexados (ej: espesor mínimo de pared, PWHT, ensayos NDE...)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          className="bg-transparent text-xs text-white placeholder-muted-foreground w-full focus:outline-none px-2"
         />
-        <button type="submit" className="btn btn-secondary" disabled={buscando || !query.trim()}>
+        <Button variant="secondary" size="sm" type="submit" disabled={buscando || !query.trim()}>
           {buscando ? 'Buscando…' : 'Buscar'}
-        </button>
+        </Button>
         {resultados !== null && (
-          <button type="button" className="btn btn-secondary" onClick={() => { setResultados(null); setQuery(''); }}>
+          <Button variant="outline" size="sm" type="button" onClick={() => { setResultados(null); setQuery(''); }}>
             Limpiar
-          </button>
+          </Button>
         )}
       </form>
 
       {resultados !== null && (
-        <div className="rag-resultados">
+        <div className="bg-panel border border-border rounded-xl p-4 space-y-3">
           {resultados.length === 0 ? (
-            <p className="doc-subheader">Sin resultados relevantes para esta búsqueda.</p>
+            <p className="text-xs text-muted-foreground font-medium">Sin resultados relevantes para esta búsqueda.</p>
           ) : (
             resultados.map((r) => (
-              <div key={r.chunk_id} className="rag-resultado-item">
-                <div className="rag-resultado-header">
-                  <span className="rag-resultado-doc">📄 {r.titulo_doc}{r.pagina_inicio != null ? ` — Pág. ${r.pagina_inicio}` : ''}</span>
-                  <span className="rag-resultado-similitud">{Math.round(r.similitud * 100)}% relevante</span>
+              <div key={r.chunk_id} className="bg-card border border-border/60 p-3 rounded-lg text-xs leading-relaxed">
+                <div className="flex justify-between items-center mb-1 text-[10px] text-muted-foreground">
+                  <span className="font-bold text-white">📄 {r.titulo_doc}{r.pagina_inicio != null ? ` — Pág. ${r.pagina_inicio}` : ''}</span>
+                  <span className="text-accent font-extrabold">{Math.round(r.similitud * 100)}% relevante</span>
                 </div>
-                <p className="rag-resultado-texto">{r.contenido}</p>
+                <p className="text-foreground/90 font-medium leading-relaxed font-sans">{r.contenido}</p>
               </div>
             ))
           )}
@@ -236,74 +237,131 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       )}
 
       {error && (
-        <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '12px 16px', color: '#f87171', fontSize: '0.875rem', marginBottom: '20px' }}>
+        <div className="bg-red-500/10 border border-red-500/25 p-3 rounded-lg text-xs text-red-400 leading-relaxed">
           ⚠️ {error}
         </div>
       )}
 
       {loading ? (
-        <div className="loader-container"><div className="spinner"></div><span>Cargando biblioteca…</span></div>
+        <div className="flex justify-center items-center py-12 text-sm text-muted-foreground font-medium gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent" />
+          Cargando biblioteca…
+        </div>
       ) : documentos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 24px', color: '#94a3b8' }}>
-          No hay documentos subidos todavía para este proyecto.
+        <div className="max-w-xl mx-auto bg-gradient-to-b from-panel/40 to-panel/5 border border-border/80 p-8 rounded-xl shadow-2xl text-center space-y-6 mt-8">
+          <div className="w-16 h-16 bg-accent/10 border border-accent/20 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-white text-base font-bold tracking-tight">Biblioteca Documental Vacía</h3>
+            <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
+              Comienza subiendo las especificaciones técnicas o adendas de tu proyecto para estructurar las clases de piping y fluidos de servicio.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 text-left">
+            <div className="bg-card/40 border border-border/60 p-3 rounded-lg flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-accent uppercase">Paso 1</span>
+              <span className="text-[10px] text-white font-bold leading-snug">Subir PDF</span>
+              <p className="text-[9px] text-muted-foreground leading-relaxed">Carga las especificaciones del cliente o del proyecto.</p>
+            </div>
+            <div className="bg-card/40 border border-border/60 p-3 rounded-lg flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-accent uppercase">Paso 2</span>
+              <span className="text-[10px] text-white font-bold leading-snug">Gemini IA</span>
+              <p className="text-[9px] text-muted-foreground leading-relaxed">El modelo extrae tablas de datos automáticamente.</p>
+            </div>
+            <div className="bg-card/40 border border-border/60 p-3 rounded-lg flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold text-accent uppercase">Paso 3</span>
+              <span className="text-[10px] text-white font-bold leading-snug">OT Aprueba</span>
+              <p className="text-[9px] text-muted-foreground leading-relaxed">Revisa las propuestas de la IA y aplícalas al catálogo.</p>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <Button variant="primary" size="sm" onClick={() => setMostrarModal(true)}>
+              + Subir Primer Documento PDF
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="doc-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {documentos.map((doc) => (
-            <div key={doc.id} className="doc-card">
-              <div className="doc-card-badge">
-                <span className={getStatusBadgeClass(doc.estado_procesamiento)}>
+            <div key={doc.id} className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col justify-between hover:border-accent transition-all h-72">
+              <div className="p-4 pb-0 flex justify-end">
+                <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${getStatusBadgeClass(doc.estado_procesamiento)}`}>
                   {getStatusLabel(doc.estado_procesamiento)}
                 </span>
               </div>
 
-              <div className="doc-card-body">
-                <div className="doc-pdf-icon">📄</div>
-                <h3 className="doc-title">{doc.titulo}</h3>
-                {doc.descripcion && <p className="doc-desc">{doc.descripcion}</p>}
-
-                <div className="doc-meta-info">
-                  <span><strong>Rev:</strong> {doc.revision || 'N/A'}</span>
-                  <span><strong>Tipo:</strong> {doc.tipo_documento.replace('_', ' ').toUpperCase()}</span>
-                  {doc.n_paginas != null && <span><strong>Págs:</strong> {doc.n_paginas}</span>}
-                  {doc.n_chunks != null && <span><strong>Indexado:</strong> {doc.n_chunks} secciones</span>}
+              <div className="p-4 flex-grow flex flex-col gap-2 justify-between">
+                <div>
+                  <div className="text-2xl mb-1">📄</div>
+                  <h3 className="text-sm font-extrabold text-white tracking-tight leading-snug line-clamp-1">{doc.titulo}</h3>
+                  {doc.descripcion && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">{doc.descripcion}</p>}
                 </div>
 
-                {doc.estado_procesamiento === 'error' && doc.error_detalle && (
-                  <div style={{ color: '#f87171', fontSize: '0.8rem', marginBottom: '8px' }}>{doc.error_detalle}</div>
-                )}
+                <div>
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] text-muted-foreground border-t border-b border-border/40 py-2 my-2 font-medium">
+                    <span><strong>Rev:</strong> {doc.revision || 'N/A'}</span>
+                    <span className="truncate"><strong>Tipo:</strong> {doc.tipo_documento.replace('_', ' ').toUpperCase()}</span>
+                    {doc.n_paginas != null && <span><strong>Págs:</strong> {doc.n_paginas}</span>}
+                    {doc.n_chunks != null && <span className="truncate"><strong>Indexado:</strong> {doc.n_chunks} secc.</span>}
+                  </div>
 
-                <div className="doc-date">
-                  Subido el: {new Date(doc.creado_en).toLocaleString('es-CL')}
+                  {doc.estado_procesamiento === 'error' && doc.error_detalle && (
+                    <div className="text-red-400 text-[10px] leading-tight mb-2 truncate" title={doc.error_detalle}>{doc.error_detalle}</div>
+                  )}
+
+                  <div className="text-[9px] text-slate-500 font-medium">
+                    Subido: {new Date(doc.creado_en).toLocaleString('es-CL')}
+                  </div>
                 </div>
               </div>
 
-              <div className="doc-card-footer">
+              <div className="p-4 pt-0 flex flex-col gap-1.5">
                 {(doc.estado_procesamiento === 'pendiente' || doc.estado_procesamiento === 'error') && (
-                  <button
-                    className="btn btn-action btn-ia"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => handleProcesarIA(doc.id)}
                     disabled={procesandoId !== null}
+                    className="w-full"
                   >
                     {procesandoId === doc.id ? 'Procesando…' : 'Procesar con Gemini IA'}
-                  </button>
+                  </Button>
                 )}
                 {procesandoId === doc.id && (
-                  <div className="loader-container" style={{ marginTop: '8px' }}>
-                    <div className="spinner"></div>
-                    <span>Gemini está leyendo el documento…</span>
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] text-accent py-1">
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border border-accent border-t-transparent" />
+                    <span>Gemini analizando PDF…</span>
                   </div>
                 )}
                 {doc.estado_procesamiento === 'lote_generado' && (
-                  <button
-                    className="btn btn-action btn-success"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => onSelectLote(doc.id)}
+                    className="w-full"
                   >
                     Revisar y Aprobar Cambios
-                  </button>
+                  </Button>
+                )}
+                {onAbrirConstructor && (doc.tipo_documento === 'especificacion_tecnica' || doc.tipo_documento === 'adenda') && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onAbrirConstructor(doc.id)}
+                    className="w-full"
+                  >
+                    Abrir en Constructor
+                  </Button>
                 )}
                 {doc.estado_procesamiento === 'completado' && (
-                  <span className="success-text">✓ Datos aplicados al Catálogo</span>
+                  <span className="text-[10px] font-bold text-emerald-400 text-center py-1 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                    ✓ Datos en Catálogo
+                  </span>
                 )}
               </div>
             </div>
@@ -311,28 +369,34 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
         </div>
       )}
 
+      {/* MODAL SUBIR DOCUMENTO */}
       {mostrarModal && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h3>Subir Especificación de Ingeniería</h3>
-            <form onSubmit={handleSubir}>
-              <div className="form-group">
-                <label>Título del Documento</label>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-panel border border-border p-6 rounded-lg w-full max-w-lg shadow-2xl space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-white leading-tight">Subir Especificación de Ingeniería</h3>
+              <p className="text-xs text-muted-foreground mt-1">Carga el plano o documento PDF en el almacenamiento seguro.</p>
+            </div>
+            <form onSubmit={handleSubir} className="space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-white">Título del Documento</label>
                 <input
                   type="text"
                   placeholder="Ej: Especificación Técnica de Materiales de Cañerías"
                   value={nuevoTitulo}
                   onChange={(e) => setNuevoTitulo(e.target.value)}
+                  className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent"
                   required
                 />
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Tipo de Documento</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-white">Tipo de Documento</label>
                   <select
                     value={nuevoTipo}
                     onChange={(e) => setNuevoTipo(e.target.value as Documento['tipo_documento'])}
+                    className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent"
                   >
                     <option value="especificacion_tecnica">Especificación Técnica</option>
                     <option value="adenda">Adenda / Anexo</option>
@@ -342,55 +406,59 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>Revisión</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-white">Revisión (REV)</label>
                   <input
                     type="text"
                     placeholder="Ej: A, 0, 1"
                     value={nuevaRev}
                     onChange={(e) => setNuevaRev(e.target.value)}
+                    className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent"
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Descripción / Notas</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-white">Descripción / Notas</label>
                 <textarea
                   placeholder="Agregue comentarios sobre el origen o cambios del documento..."
                   value={nuevaDesc}
                   onChange={(e) => setNuevaDesc(e.target.value)}
-                  rows={3}
+                  rows={2}
+                  className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent resize-none"
                 />
               </div>
 
-              <div className="form-group">
-                <label>Archivo PDF (Storage Privado)</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-white">Archivo PDF (Almacenamiento Privado)</label>
                 <div
-                  className="file-dropzone"
+                  className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-panel/10"
                   onClick={() => document.getElementById('doc-file-input')?.click()}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) setArchivo(f); }}
                 >
-                  <div className="dropzone-icon">📥</div>
-                  <p>{archivo ? archivo.name : <>Arrastra tu PDF aquí o <strong>haz clic para examinar</strong></>}</p>
-                  <span className="dropzone-sub">Solo archivos PDF de ingeniería</span>
+                  <div className="text-2xl mb-1">📥</div>
+                  <p className="text-xs font-semibold text-white text-center">
+                    {archivo ? archivo.name : <>Arrastra tu PDF aquí o <strong className="text-accent hover:underline">haz clic para examinar</strong></>}
+                  </p>
+                  <span className="text-[9px] text-muted-foreground mt-1">Solo archivos PDF de ingeniería</span>
                   <input
                     id="doc-file-input"
                     type="file"
                     accept="application/pdf"
-                    style={{ display: 'none' }}
+                    className="hidden"
                     onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
                   />
                 </div>
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setMostrarModal(false)} disabled={subiendo}>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/40 mt-4">
+                <Button variant="outline" size="sm" type="button" onClick={() => setMostrarModal(false)} disabled={subiendo}>
                   Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={subiendo || !archivo}>
+                </Button>
+                <Button variant="primary" size="sm" type="submit" disabled={subiendo || !archivo}>
                   {subiendo ? 'Subiendo PDF...' : 'Subir Documento'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
