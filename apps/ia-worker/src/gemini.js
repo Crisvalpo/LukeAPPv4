@@ -127,8 +127,22 @@ const SCHEMA_CATALOGO = {
         required: ['codigo', 'confianza'],
       },
     },
+    revestimientos_int: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          codigo: { type: 'STRING' },
+          descripcion: { type: 'STRING' },
+          paginas: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          contexto: { type: 'STRING' },
+          confianza: { type: 'NUMBER' },
+        },
+        required: ['codigo', 'confianza'],
+      },
+    },
   },
-  required: ['fluidos', 'clases', 'diametros_nps', 'esquemas_pintura', 'aislaciones_ext', 'porcentajes_nde', 'tipos_prueba', 'tipos_union'],
+  required: ['fluidos', 'clases', 'diametros_nps', 'esquemas_pintura', 'aislaciones_ext', 'porcentajes_nde', 'tipos_prueba', 'tipos_union', 'revestimientos_int'],
 };
 
 const SCHEMA_TEXTO = {
@@ -172,7 +186,9 @@ Extrae del documento adjunto:
 
 8. TIPOS DE UNIÓN: únicamente si el documento define formalmente, en el listado de componentes y conexiones admitidas para cada rango de diámetro de una clase, los tipos de unión estructural de las cañerías (ej: "BW" soldadura a tope, "SW" embutido soldable, "THR" roscado, "FLG" bridas).
 
-Para cada propuesta (si las hay) de cualquiera de los 8 catálogos anteriores indica:
+9. REVESTIMIENTO INTERIOR: únicamente si el documento define formalmente códigos de revestimiento/recubrimiento INTERIOR de la cañería (ej: revestimiento engomado, epóxico interior, cemento centrifugado), normalmente en la sección de protección interior contra la corrosión o abrasión del fluido transportado. NO confundir con la aislación térmica EXTERIOR (categoría 5): la aislación exterior conserva temperatura por fuera de la cañería, mientras que el revestimiento interior protege la superficie interna en contacto con el fluido — son conceptos distintos, con catálogos de códigos independientes.
+
+Para cada propuesta (si las hay) de cualquiera de los 9 catálogos anteriores indica:
 - "paginas": número(s) de página del PDF donde aparece la definición formal del código (empezando en 1).
 - "contexto": una cita textual breve (máx. 200 caracteres) que muestre la definición formal del código, no una mención incidental.
 - "confianza": 0.0 a 1.0. Usa menos de 0.5 si tienes cualquier duda sobre si es realmente un código de catálogo formal.
@@ -456,6 +472,7 @@ export async function extraerDeGemini(pdfBase64, onProgreso) {
       porcentajesNde: Array.isArray(catalogo?.porcentajes_nde) ? catalogo.porcentajes_nde : [],
       tiposPrueba: Array.isArray(catalogo?.tipos_prueba) ? catalogo.tipos_prueba : [],
       tiposUnion: Array.isArray(catalogo?.tipos_union) ? catalogo.tipos_union : [],
+      revestimientosInt: Array.isArray(catalogo?.revestimientos_int) ? catalogo.revestimientos_int : [],
       paginasTexto,
       nPaginas,
     };

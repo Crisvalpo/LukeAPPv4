@@ -140,7 +140,7 @@ async function procesarDocumento(jwt, documentoId) {
 
   const {
     fluidos, clases, diametrosNps, esquemasPintura, aislacionesExt, porcentajesNde, tiposPrueba, tiposUnion,
-    paginasTexto, nPaginas,
+    revestimientosInt, paginasTexto, nPaginas,
   } = await extraerDeGemini(pdfBase64, async (progresoMsg) => {
     await supabase.from('doc_biblioteca')
       .update({ error_detalle: progresoMsg })
@@ -196,6 +196,11 @@ async function procesarDocumento(jwt, documentoId) {
       tablaDestino: 'cat_tipo_union',
       items: tiposUnion,
       mapPayload: (t) => ({ codigo: t.codigo, descripcion: t.descripcion ?? null }),
+    },
+    {
+      tablaDestino: 'cat_revestimiento_int',
+      items: revestimientosInt,
+      mapPayload: (r) => ({ codigo: r.codigo, descripcion: r.descripcion ?? null }),
     },
   ];
 

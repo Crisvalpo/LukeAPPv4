@@ -11,7 +11,8 @@ type TablaDestino =
   | 'cat_aislacion_ext'
   | 'cat_porcentaje_nde'
   | 'cat_tipo_prueba'
-  | 'cat_tipo_union';
+  | 'cat_tipo_union'
+  | 'cat_revestimiento_int';
 type Accion = 'nueva' | 'modificada' | 'sin_cambio' | 'error';
 
 interface CampoDef {
@@ -58,6 +59,10 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoDef[]> = {
     { campo: 'codigo', label: 'Código' },
     { campo: 'descripcion', label: 'Descripción' },
   ],
+  cat_revestimiento_int: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'descripcion', label: 'Descripción' },
+  ],
 };
 
 const TABLA_LABEL: Record<TablaDestino, string> = {
@@ -69,6 +74,7 @@ const TABLA_LABEL: Record<TablaDestino, string> = {
   cat_porcentaje_nde: 'Porcentaje NDE',
   cat_tipo_prueba: 'Tipos de Prueba',
   cat_tipo_union: 'Tipos de Unión',
+  cat_revestimiento_int: 'Revestimiento Interno',
 };
 
 const CLAVE_NATURAL_POR_TABLA: Record<TablaDestino, string> = {
@@ -80,6 +86,7 @@ const CLAVE_NATURAL_POR_TABLA: Record<TablaDestino, string> = {
   cat_porcentaje_nde: 'codigo',
   cat_tipo_prueba: 'codigo',
   cat_tipo_union: 'codigo',
+  cat_revestimiento_int: 'codigo',
 };
 
 interface FilaImport {

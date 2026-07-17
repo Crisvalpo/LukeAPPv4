@@ -101,6 +101,14 @@ const CATALOGOS: CatalogoConfig[] = [
       { key: 'descripcion', label: 'Descripción', tipo: 'text', requerido: true, placeholder: 'ej: Soldadura a tope' },
     ],
   },
+  {
+    id: 'revestimiento', tabla: 'cat_revestimiento_int', claveNatural: 'codigo',
+    label: 'Revestimiento Interno', labelSingular: 'Revestimiento',
+    campos: [
+      { key: 'codigo', label: 'Código', tipo: 'text', esClave: true, requerido: true, placeholder: 'ej: RG' },
+      { key: 'descripcion', label: 'Descripción', tipo: 'text', requerido: true, placeholder: 'ej: Engomado interior' },
+    ],
+  },
 ];
 
 const catalogoPorId = (id: string): CatalogoConfig => CATALOGOS.find((c) => c.id === id) ?? CATALOGOS[0];
@@ -109,6 +117,7 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
   const [documentoUrl, setDocumentoUrl] = useState<string | null>(null);
   const [tituloDoc, setTituloDoc] = useState('');
   const [pestana, setPestana] = useState<string>('fluidos');
+  const [pdfColapsado, setPdfColapsado] = useState(false);
 
   // Catálogos locales, uno por cada CatalogoConfig.id
   const [datos, setDatos] = useState<Record<string, any[]>>({});
@@ -301,7 +310,11 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
       {/* Pantalla Dividida */}
       <div className="flex flex-grow overflow-hidden">
         {/* Visor PDF (Izquierda) */}
-        <div className="w-[55%] h-full relative overflow-hidden bg-zinc-800 border-r border-border">
+        <div
+          className={`h-full relative overflow-hidden bg-zinc-800 border-r border-border transition-all duration-200 ${
+            pdfColapsado ? 'w-0' : 'w-[55%]'
+          }`}
+        >
           {documentoUrl ? (
             <iframe
               src={documentoUrl}
@@ -315,8 +328,17 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
           )}
         </div>
 
+        {/* Separador con botón para colapsar/expandir el PDF y dar más espacio a la tabla */}
+        <button
+          onClick={() => setPdfColapsado((v) => !v)}
+          title={pdfColapsado ? 'Mostrar visor de PDF' : 'Ocultar visor de PDF para dar más espacio a la tabla'}
+          className="w-5 shrink-0 h-full flex items-center justify-center bg-panel border-r border-border hover:bg-card text-muted-foreground hover:text-white transition-colors"
+        >
+          {pdfColapsado ? '▶' : '◀'}
+        </button>
+
         {/* Panel Constructor de Catálogo (Derecha) */}
-        <div className="w-[45%] h-full flex flex-col bg-panel overflow-y-auto p-6 space-y-6">
+        <div className={`h-full flex flex-col bg-panel overflow-y-auto p-6 space-y-6 ${pdfColapsado ? 'flex-grow' : 'w-[45%]'}`}>
           {/* Tabs */}
           <div className="flex border-b border-border overflow-x-auto">
             {CATALOGOS.map((cat) => (
