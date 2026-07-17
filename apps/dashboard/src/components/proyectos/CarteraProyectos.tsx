@@ -39,10 +39,12 @@ interface CarteraProyectosProps {
   onAbrirCubicador: (proyectoId: string) => void;
   onAbrirPids: (proyectoId: string) => void;
   onAbrirConfig: (proyectoId: string) => void;
+  onAbrirAWP: (proyectoId: string) => void;
+  onAbrirDotacion: (proyectoId: string) => void;
   esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirConfig, esGerencia }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirConfig, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +169,12 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
         </Button>
         <Button variant="outline" size="sm" onClick={() => onAbrirConfig(seleccionado.id)}>
           Configuración Integración
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onAbrirAWP(seleccionado.id)}>
+          AWP
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onAbrirDotacion(seleccionado.id)}>
+          Dotación
         </Button>
         {esGerencia && (
           <Button

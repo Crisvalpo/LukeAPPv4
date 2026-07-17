@@ -13,6 +13,8 @@ import CubicadorImport from './components/cubicador/CubicadorImport';
 import { ConfiguracionIntegracion } from './components/proyectos/ConfiguracionIntegracion';
 import { ConstructorEspecificaciones } from './components/documental/ConstructorEspecificaciones';
 import { BibliotecaPIDs } from './components/documental/BibliotecaPIDs';
+import { AWPCatalogos } from './components/proyectos/AWPCatalogos';
+import { DotacionPersonal } from './components/proyectos/DotacionPersonal';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
 import { HeaderActionsContext } from './hooks/useHeaderActions';
@@ -21,7 +23,7 @@ import { HeaderActionsContext } from './hooks/useHeaderActions';
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
 const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'configuracion_integracion';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'configuracion_integracion' | 'awp' | 'dotacion';
 
 interface Perfil {
   estado_cuenta: 'pendiente' | 'aprobado' | 'rechazado';
@@ -133,6 +135,16 @@ function App() {
   const handleAbrirConfig = (proyectoId: string) => {
     setProyectoActivo(proyectoId);
     setVista('configuracion_integracion');
+  };
+
+  const handleAbrirAWP = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('awp');
+  };
+
+  const handleAbrirDotacion = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('dotacion');
   };
 
   const handleAbrirConstructor = (docId: string) => {
@@ -291,6 +303,22 @@ function App() {
                   >
                     Integración
                   </Button>
+                  <Button
+                    variant={vista === 'awp' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('awp'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    AWP
+                  </Button>
+                  <Button
+                    variant={vista === 'dotacion' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('dotacion'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    Dotación
+                  </Button>
                 </div>
               )}
             </div>
@@ -387,12 +415,14 @@ function App() {
       {/* Contenido Principal */}
       <main className="flex-grow">
         {vista === 'cartera' && (
-          <CarteraProyectos 
-            onAbrirIngesta={handleAbrirIngesta} 
-            onAbrirCubicador={handleAbrirCubicador} 
+          <CarteraProyectos
+            onAbrirIngesta={handleAbrirIngesta}
+            onAbrirCubicador={handleAbrirCubicador}
             onAbrirPids={handleAbrirPids}
             onAbrirConfig={handleAbrirConfig}
-            esGerencia={perfil?.acceso_global ?? false} 
+            onAbrirAWP={handleAbrirAWP}
+            onAbrirDotacion={handleAbrirDotacion}
+            esGerencia={perfil?.acceso_global ?? false}
           />
         )}
 
@@ -419,6 +449,18 @@ function App() {
 
         {vista === 'biblioteca_pids' && proyectoActivo && (
           <BibliotecaPIDs
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'awp' && proyectoActivo && (
+          <AWPCatalogos
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'dotacion' && proyectoActivo && (
+          <DotacionPersonal
             proyectoId={proyectoActivo}
           />
         )}
