@@ -38,13 +38,12 @@ interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
   onAbrirCubicador: (proyectoId: string) => void;
   onAbrirPids: (proyectoId: string) => void;
-  onAbrirConfig: (proyectoId: string) => void;
   onAbrirAWP: (proyectoId: string) => void;
   onAbrirDotacion: (proyectoId: string) => void;
   esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirConfig, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +78,10 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     }
   }, [esGerencia, proyectos, seleccionado]);
 
-  const handleProyectoCreado = () => {
+  const handleProyectoCreado = (proyectoId: string) => {
     setMostrarWizard(false);
     fetchProyectos();
+    onAbrirIngesta(proyectoId);
   };
 
   // El borrado de un proyecto solo elimina en cascada las FILAS de las tablas
@@ -159,22 +159,19 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
           ← Volver
         </Button>
         <Button variant="primary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
-          Especificaciones
+          1. Documentos
         </Button>
         <Button variant="secondary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
-          Datos
+          3. Datos / Line List
         </Button>
         <Button variant="outline" size="sm" onClick={() => onAbrirPids(seleccionado.id)}>
           Planos P&ID
         </Button>
-        <Button variant="outline" size="sm" onClick={() => onAbrirConfig(seleccionado.id)}>
-          Configuración Integración
-        </Button>
         <Button variant="outline" size="sm" onClick={() => onAbrirAWP(seleccionado.id)}>
-          AWP
+          AWP (Avanzado)
         </Button>
         <Button variant="outline" size="sm" onClick={() => onAbrirDotacion(seleccionado.id)}>
-          Dotación
+          Dotación (Avanzado)
         </Button>
         {esGerencia && (
           <Button

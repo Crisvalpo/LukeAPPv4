@@ -10,10 +10,11 @@ import { CarteraProyectos } from './components/proyectos/CarteraProyectos';
 import BibliotecaDocumental from './components/documental/BibliotecaDocumental';
 import RevisionLoteIA from './components/documental/RevisionLoteIA';
 import CubicadorImport from './components/cubicador/CubicadorImport';
-import { ConfiguracionIntegracion } from './components/proyectos/ConfiguracionIntegracion';
+
 import { ConstructorEspecificaciones } from './components/documental/ConstructorEspecificaciones';
 import { BibliotecaPIDs } from './components/documental/BibliotecaPIDs';
 import { AWPCatalogos } from './components/proyectos/AWPCatalogos';
+import { GestionCatalogos } from './components/proyectos/GestionCatalogos';
 import { DotacionPersonal } from './components/proyectos/DotacionPersonal';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
@@ -23,7 +24,7 @@ import { HeaderActionsContext } from './hooks/useHeaderActions';
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
 const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'configuracion_integracion' | 'awp' | 'dotacion';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'awp' | 'dotacion' | 'catalogos';
 
 interface Perfil {
   estado_cuenta: 'pendiente' | 'aprobado' | 'rechazado';
@@ -132,10 +133,7 @@ function App() {
     setVista('biblioteca_pids');
   };
 
-  const handleAbrirConfig = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('configuracion_integracion');
-  };
+
 
   const handleAbrirAWP = (proyectoId: string) => {
     setProyectoActivo(proyectoId);
@@ -169,8 +167,9 @@ function App() {
   };
 
   const handleCompletado = () => {
-    alert('🎉 ¡Lote de importación IA aprobado y aplicado exitosamente a las tablas de catálogo!');
-    handleBackToBiblioteca();
+    setVista('cubicador');
+    setDocSeleccionado(null);
+    alert('🎉 ¡Todos los catálogos han sido aprobados y aplicados al proyecto con éxito!\n\nPaso 2: Ahora puedes proceder a cargar los datos del cubicador (Line List, Spools, Juntas, etc.) utilizando el importador.');
   };
 
   const handleLogout = async () => {
@@ -277,7 +276,15 @@ function App() {
                     onClick={() => { setVista('ingesta_ia'); setDocSeleccionado(null); }}
                     className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
                   >
-                    Especificaciones
+                    1. Documentos
+                  </Button>
+                  <Button
+                    variant={vista === 'catalogos' ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setVista('catalogos'); setDocSeleccionado(null); }}
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                  >
+                    2. Catálogos
                   </Button>
                   <Button
                     variant={vista === 'cubicador' ? 'primary' : 'ghost'}
@@ -285,7 +292,7 @@ function App() {
                     onClick={() => { setVista('cubicador'); setDocSeleccionado(null); }}
                     className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
                   >
-                    Datos
+                    3. Datos / Line List
                   </Button>
                   <Button
                     variant={vista === 'biblioteca_pids' ? 'primary' : 'ghost'}
@@ -296,28 +303,20 @@ function App() {
                     Planos P&ID
                   </Button>
                   <Button
-                    variant={vista === 'configuracion_integracion' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => { setVista('configuracion_integracion'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
-                  >
-                    Integración
-                  </Button>
-                  <Button
                     variant={vista === 'awp' ? 'primary' : 'ghost'}
                     size="sm"
                     onClick={() => { setVista('awp'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
                   >
-                    AWP
+                    AWP (Avanzado)
                   </Button>
                   <Button
                     variant={vista === 'dotacion' ? 'primary' : 'ghost'}
                     size="sm"
                     onClick={() => { setVista('dotacion'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider"
+                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
                   >
-                    Dotación
+                    Dotación (Avanzado)
                   </Button>
                 </div>
               )}
@@ -419,7 +418,6 @@ function App() {
             onAbrirIngesta={handleAbrirIngesta}
             onAbrirCubicador={handleAbrirCubicador}
             onAbrirPids={handleAbrirPids}
-            onAbrirConfig={handleAbrirConfig}
             onAbrirAWP={handleAbrirAWP}
             onAbrirDotacion={handleAbrirDotacion}
             esGerencia={perfil?.acceso_global ?? false}
@@ -443,6 +441,12 @@ function App() {
 
         {vista === 'cubicador' && proyectoActivo && (
           <CubicadorImport
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'catalogos' && proyectoActivo && (
+          <GestionCatalogos
             proyectoId={proyectoActivo}
           />
         )}
@@ -473,12 +477,7 @@ function App() {
           />
         )}
 
-        {vista === 'configuracion_integracion' && proyectoActivo && (
-          <ConfiguracionIntegracion
-            proyectoId={proyectoActivo}
-            onClose={handleBackToCartera}
-          />
-        )}
+
 
         {vista === 'revision_lote' && docSeleccionado && (
           <RevisionLoteIA

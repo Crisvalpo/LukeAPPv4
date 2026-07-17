@@ -24,6 +24,10 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoCanonico[]> = {
     { campo: 'clase_codigo', label: 'Clase piping (código)', alias: ['clase', 'clase_codigo', 'class', 'pipingclass', 'clasepiping'] },
     { campo: 'nps_texto', label: 'NPS / Diámetro', alias: ['nps', 'diametro', 'size', 'npstexto'] },
     { campo: 'longitud_total', label: 'Longitud total', alias: ['longitud', 'longitudtotal', 'length', 'metros', 'lengthtotal', 'mts'] },
+    { campo: 'prueba_codigo', label: 'Prueba (código)', alias: ['prueba', 'tipo_prueba', 'prueba_codigo', 'tipo prueba'] },
+    { campo: 'pintura_codigo', label: 'Pintura (código)', alias: ['pintura', 'esquema_pintura', 'pintura_codigo', 'esquema', 'esquema pintura'] },
+    { campo: 'revestimiento_codigo', label: 'Revestimiento (código)', alias: ['revestimiento', 'revestimiento_int', 'revestimiento_codigo', 'revestimiento interior'] },
+    { campo: 'aislacion_codigo', label: 'Aislación (código)', alias: ['aislacion', 'aislacion_ext', 'aislacion_codigo', 'aislacion'] },
   ],
   list_mto: [
     { campo: 'item', label: 'Ítem', requerido: true, alias: ['item', 'itemno', 'nitem', 'itemnumber', 'id_mto'] },
@@ -38,9 +42,10 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoCanonico[]> = {
     { campo: 'norma', label: 'Norma', alias: ['norma', 'standard', 'spec'] },
     { campo: 'schedule', label: 'Schedule', alias: ['schedule', 'sch'] },
     { campo: 'heat_number', label: 'N° Colada (Heat)', alias: ['heatnumber', 'heat', 'colada', 'ncolada'] },
+    { campo: 'id_spool', label: 'ID Spool', alias: ['id_spool', 'idspool', 'spool', 'spool_id', 'spoolid'] },
   ],
   list_isos: [
-    { campo: 'id_iso', label: 'ID Isométrico', requerido: true, alias: ['id_iso', 'idiso', 'iso', 'isometrico'] },
+    { campo: 'id_iso', label: 'ID Isométrico', alias: ['id_iso', 'idiso', 'iso', 'isometrico'] },
     { campo: 'id_linea', label: 'ID Línea', alias: ['id_linea', 'idlinea', 'linea'] },
     { campo: 'sheet', label: 'Sheet (Hoja)', alias: ['sheet', 'hoja', 'hojanumero'] },
     { campo: 'descripcion', label: 'Descripción', alias: ['descripcion', 'description', 'desc'] },
@@ -158,6 +163,18 @@ const ACCION_META: Record<Accion, { label: string; bg: string; text: string }> =
   error: { label: 'Error', bg: 'bg-rose-500/15 border-rose-500/30', text: 'text-rose-400' },
 };
 
+const CATALOGOS_CRITICOS = [
+  { tabla: 'cat_fluido_servicio', label: 'Fluidos de Servicio' },
+  { tabla: 'cat_clase_piping', label: 'Clases de Piping' },
+  { tabla: 'cat_diametros_nps', label: 'Diámetros NPS' },
+  { tabla: 'cat_tipo_union', label: 'Tipos de Unión' },
+  { tabla: 'cat_porcentaje_nde', label: 'Porcentajes NDE' },
+  { tabla: 'cat_tipo_prueba', label: 'Tipos de Prueba' },
+  { tabla: 'cat_esquema_pintura', label: 'Esquemas de Pintura' },
+  { tabla: 'cat_aislacion_ext', label: 'Aislación Exterior' },
+  { tabla: 'cat_revestimiento_int', label: 'Revestimiento Interior' },
+];
+
 export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) => {
   const [fase, setFase] = useState<Fase>('conexiones');
   const [tablaDestino, setTablaDestino] = useState<TablaDestino>('list_lineas');
@@ -166,6 +183,35 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   const [progresoSync, setProgresoSync] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+
+  // Estados de validación de catálogos base firme
+  const [catalogosEstado, setCatalogosEstado] = useState<{ tabla: string; filas_count: number }[] | null>(null);
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const cargarEstado = async () => {
+      setCargandoCatalogos(true);
+      try {
+        const { data, error } = await supabase.rpc('obtener_estado_catalogos', { p_proyecto_id: proyectoId });
+        if (error) throw error;
+        if (active) {
+          setCatalogosEstado(data as { tabla: string; filas_count: number }[]);
+        }
+      } catch (err: any) {
+        console.error('Error al obtener estado de catálogos:', err);
+      } finally {
+        if (active) setCargandoCatalogos(false);
+      }
+    };
+    cargarEstado();
+    return () => { active = false; };
+  }, [proyectoId]);
+
+  const catFaltantes = CATALOGOS_CRITICOS.filter(c => {
+    const item = catalogosEstado?.find(x => x.tabla === c.tabla);
+    return !item || item.filas_count === 0;
+  });
 
   // Estados de datos de múltiples tablas procesadas
   const [tablasProcesadas, setTablasProcesadas] = useState<Record<TablaDestino, TablaProcesada | null>>({
@@ -393,6 +439,7 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
   };
 
   // Estados de conexión locales (SharePoint mock persistente en localStorage)
+  const [proyecto, setProyecto] = useState<{ codigo: string; nombre: string } | null>(null);
   const [syncStates, setSyncStates] = useState<Record<TablaDestino, ConnectionState>>({
     list_lineas: { lastSync: null, status: 'Pendiente' },
     list_mto: { lastSync: null, status: 'Pendiente' },
@@ -401,7 +448,19 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
     list_juntas: { lastSync: null, status: 'Pendiente' }
   });
 
-  const baseFolder = "C:\\Users\\CristianLukeCabello\\EISA\\EIMI00413 - Andina - 2 - Espesador de Concentrado Colectivo PMFC - CODELCO - 2025\\1 - APP\\1_Tablas_MS\\LIST";
+  useEffect(() => {
+    supabase.from('proyectos')
+      .select('codigo, nombre')
+      .eq('id', proyectoId)
+      .single()
+      .then(({ data }) => {
+        if (data) setProyecto(data);
+      });
+  }, [proyectoId]);
+
+  const baseFolder = proyecto?.codigo === 'EIMI00413'
+    ? "C:\\Users\\CristianLukeCabello\\EISA\\EIMI00413 - Andina - 2 - Espesador de Concentrado Colectivo PMFC - CODELCO - 2025\\1 - APP\\1_Tablas_MS\\LIST"
+    : `OneDrive \\ Proyectos \\ ${proyecto?.codigo || 'PRY-NUEVO'} \\ LIST`;
 
   useEffect(() => {
     const saved = localStorage.getItem(`sync_states_${proyectoId}`);
@@ -484,6 +543,11 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
         payload[c.campo] = valor === undefined || valor === null ? '' : String(valor).trim();
       }
       
+      if (tableKey === 'list_isos') {
+        if (!payload['id_iso'] || payload['id_iso'].trim() === '') {
+          payload['id_iso'] = `${payload['id_linea']}-${payload['sheet']}`;
+        }
+      }
       if (tableKey === 'list_juntas') {
         payload['id_junta'] = `${payload['id_spool']}_${payload['numero_junta']}`;
       }
@@ -801,6 +865,33 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
       {/* FASE 1: TABLA DE CONEXIONES */}
       {fase === 'conexiones' && (
         <div className="flex flex-col gap-6">
+          {!cargandoCatalogos && catFaltantes.length > 0 && (
+            <Card className="bg-red-500/10 border-red-500/30">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <span className="text-3xl text-red-500">✕</span>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider">Base CAT Incompleta — Sincronización Bloqueada</h3>
+                    <p className="text-muted text-xs mt-1 leading-relaxed">
+                      Para garantizar la integridad referencial y cumplir con el flujo de <strong>Base Firme</strong>, todos los catálogos del proyecto deben tener al menos un registro cargado antes de poder importar datos de ingeniería.
+                    </p>
+                    <div className="mt-4 bg-background/50 p-4 rounded-lg border border-red-500/15">
+                      <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block mb-2">Catálogos Faltantes:</span>
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted/90 list-disc list-inside">
+                        {catFaltantes.map(cat => (
+                          <li key={cat.tabla}>{cat.label} (<code>{cat.tabla}</code>)</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <p className="text-xs text-muted/70 mt-4 leading-relaxed">
+                      Vaya a la sección de <strong>Gestión de Catálogos</strong> para cargar plantillas, procesar especificaciones técnicas con IA o añadir registros de manera manual.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Carpeta Sincronizada Info */}
           <Card className="bg-panel/20 border-border">
             <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -816,9 +907,10 @@ export const CubicadorImport: React.FC<CubicadorImportProps> = ({ proyectoId }) 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <Button
                   variant="primary"
+                  disabled={cargandoCatalogos || catFaltantes.length > 0}
                   onClick={() => setFase('sync_modal')}
                 >
-                  🔄 Sincronizar Libro Completo
+                  {cargandoCatalogos ? 'Verificando Catálogos…' : '🔄 Sincronizar Libro Completo'}
                 </Button>
                 <div className="flex items-center gap-2 justify-center bg-card/40 px-3 py-1.5 rounded border border-border/50 text-[10px] font-semibold text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />

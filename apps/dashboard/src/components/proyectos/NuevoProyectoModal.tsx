@@ -372,8 +372,8 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                     );
                   })}
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Esto inicializará automáticamente los catálogos y clases de piping correspondientes.
+                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  El proyecto se creará completamente limpio y sin catálogos sembrados por defecto.
                 </span>
               </div>
             </>
@@ -403,8 +403,8 @@ export const NuevoProyectoModal: React.FC<NuevoProyectoModalProps> = ({ onClose,
                 </span>
               </div>
 
-              <div className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                💡 Al crear el proyecto se inicializarán los diámetros normalizados NPS y se te asignará el rol de <strong>ADMIN</strong> con control total de maestros.
+              <div className="text-xs text-muted-foreground mt-2 leading-relaxed" style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '8px', lineHeight: 1.5 }}>
+                💡 Al crear el proyecto se te asignará el rol de <strong>ADMIN</strong> con control total de maestros.
               </div>
             </div>
           )}

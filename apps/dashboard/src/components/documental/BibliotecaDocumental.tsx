@@ -76,6 +76,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
   };
 
   const [nuevoTitulo, setNuevoTitulo] = useState('');
+  const [nuevoCodigo, setNuevoCodigo] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState<Documento['tipo_documento']>('especificacion_tecnica');
   const [nuevaDesc, setNuevaDesc] = useState('');
   const [nuevaRev, setNuevaRev] = useState('0');
@@ -131,6 +132,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
         proyecto_id: proyectoId,
         tipo_documento: nuevoTipo,
         titulo: nuevoTitulo,
+        codigo: nuevoCodigo.trim() ? nuevoCodigo.toUpperCase().trim() : null,
         descripcion: nuevaDesc || null,
         revision: nuevaRev || null,
         storage_path: storagePath,
@@ -142,6 +144,7 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
 
       setMostrarModal(false);
       setNuevoTitulo('');
+      setNuevoCodigo('');
       setNuevaDesc('');
       setNuevaRev('0');
       setArchivo(null);
@@ -241,27 +244,34 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
       <div className="flex justify-between items-center border-b border-border pb-4">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Ingesta Documental</h2>
-          <p className="text-xs text-muted-foreground mt-1">Sube especificaciones y adendas en PDF para extraer las especificaciones.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {documentos.length === 0 
+              ? "Paso 1 — Sube las especificaciones y documentos del proyecto. La IA detectará los catálogos automáticamente."
+              : "Sube especificaciones y adendas en PDF para extraer las especificaciones."
+            }
+          </p>
         </div>
       </div>
 
-      <form className="flex gap-2 items-center bg-card border border-border p-1.5 rounded-lg max-w-4xl" onSubmit={handleBuscar}>
-        <input
-          type="text"
-          placeholder="Buscar en el contenido de todos los documentos indexados (ej: espesor mínimo de pared, PWHT, ensayos NDE...)"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="bg-transparent text-xs text-white placeholder-muted-foreground w-full focus:outline-none px-2"
-        />
-        <Button variant="secondary" size="sm" type="submit" disabled={buscando || !query.trim()}>
-          {buscando ? 'Buscando…' : 'Buscar'}
-        </Button>
-        {resultados !== null && (
-          <Button variant="outline" size="sm" type="button" onClick={() => { setResultados(null); setQuery(''); }}>
-            Limpiar
+      {documentos.length > 0 && (
+        <form className="flex gap-2 items-center bg-card border border-border p-1.5 rounded-lg max-w-4xl" onSubmit={handleBuscar}>
+          <input
+            type="text"
+            placeholder="Buscar en el contenido de todos los documentos indexados (ej: espesor mínimo de pared, PWHT, ensayos NDE...)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="bg-transparent text-xs text-white placeholder-muted-foreground w-full focus:outline-none px-2"
+          />
+          <Button variant="secondary" size="sm" type="submit" disabled={buscando || !query.trim()}>
+            {buscando ? 'Buscando…' : 'Buscar'}
           </Button>
-        )}
-      </form>
+          {resultados !== null && (
+            <Button variant="outline" size="sm" type="button" onClick={() => { setResultados(null); setQuery(''); }}>
+              Limpiar
+            </Button>
+          )}
+        </form>
+      )}
 
       {resultados !== null && (
         <div className="bg-panel border border-border rounded-xl p-4 space-y-3">
@@ -300,9 +310,9 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
             </svg>
           </div>
           <div>
-            <h3 className="text-white text-base font-bold tracking-tight">Biblioteca Documental Vacía</h3>
+            <h3 className="text-white text-base font-bold tracking-tight">Paso 1 — Cargar especificaciones y documentos</h3>
             <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
-              Comienza subiendo las especificaciones técnicas o adendas de tu proyecto para extraer las especificaciones.
+              Sube las especificaciones técnicas o adendas en PDF de tu proyecto. Gemini IA procesará los documentos y extraerá de forma automática las propuestas de catálogos.
             </p>
           </div>
 
@@ -325,7 +335,12 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
           </div>
 
           <div className="pt-2">
-            <Button variant="primary" size="sm" onClick={() => setMostrarModal(true)}>
+            <Button 
+              variant="primary" 
+              size="md" 
+              onClick={() => setMostrarModal(true)}
+              className="px-8 py-3 text-sm font-bold bg-gradient-to-r from-accent to-indigo-600 hover:from-accent hover:to-indigo-500 shadow-lg shadow-accent/20"
+            >
               + Subir Primer Documento PDF
             </Button>
           </div>
@@ -475,6 +490,17 @@ export const BibliotecaDocumental: React.FC<BibliotecaDocumentalProps> = ({ proy
                     className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent"
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-white">Código del Documento (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: PROC-PINT-01 (la IA intentará detectarlo si se deja vacío)"
+                  value={nuevoCodigo}
+                  onChange={(e) => setNuevoCodigo(e.target.value)}
+                  className="bg-card border border-border text-foreground px-3 py-2 rounded text-xs font-semibold focus:outline-none focus:border-accent"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

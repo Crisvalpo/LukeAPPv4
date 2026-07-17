@@ -140,7 +140,7 @@ async function procesarDocumento(jwt, documentoId) {
 
   const {
     fluidos, clases, diametrosNps, esquemasPintura, aislacionesExt, porcentajesNde, tiposPrueba, tiposUnion,
-    revestimientosInt, paginasTexto, nPaginas,
+    revestimientosInt, referencias_externas, codigo_documento, paginasTexto, nPaginas,
   } = await extraerDeGemini(pdfBase64, async (progresoMsg) => {
     await supabase.from('doc_biblioteca')
       .update({ error_detalle: progresoMsg })
@@ -154,7 +154,13 @@ async function procesarDocumento(jwt, documentoId) {
     {
       tablaDestino: 'cat_fluido_servicio',
       items: fluidos,
-      mapPayload: (f) => ({ codigo: f.codigo, descripcion: f.descripcion ?? null }),
+      mapPayload: (f) => ({
+        codigo: f.codigo,
+        descripcion: f.descripcion ?? null,
+        nombre: f.nombre ?? null,
+        color_nombre: f.color_nombre ?? null,
+        color_ral: f.color_ral ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_clase_piping',
@@ -165,42 +171,87 @@ async function procesarDocumento(jwt, documentoId) {
         fluido_codigo: c.fluido_codigo ?? null,
         presion_max: c.presion_max ?? null,
         temp_max: c.temp_max ?? null,
+        material: c.material ?? null,
+        presion_psi: c.presion_psi ?? null,
+        aplicacion: c.aplicacion ?? null,
       }),
     },
     {
       tablaDestino: 'cat_diametros_nps',
       items: diametrosNps,
-      mapPayload: (n) => ({ nps: n.nps, nps_mm: n.nps_mm ?? null }),
+      mapPayload: (n) => ({
+        nps: n.nps,
+        nps_mm: n.nps_mm ?? null,
+        tipo_material: n.tipo_material ?? null,
+        unidad_medida: n.unidad_medida ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_esquema_pintura',
       items: esquemasPintura,
-      mapPayload: (p) => ({ codigo: p.codigo, descripcion: p.descripcion ?? null, capas: p.capas ?? null }),
+      mapPayload: (p) => ({
+        codigo: p.codigo,
+        descripcion: p.descripcion ?? null,
+        capas: p.capas ?? null,
+        sistema_aplicacion: p.sistema_aplicacion ?? null,
+        preparacion_superficie: p.preparacion_superficie ?? null,
+        espesor_total_um: p.espesor_total_um ?? null,
+        detalle_capas: p.detalle_capas ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_aislacion_ext',
       items: aislacionesExt,
-      mapPayload: (a) => ({ codigo: a.codigo, descripcion: a.descripcion ?? null }),
+      mapPayload: (a) => ({
+        codigo: a.codigo,
+        descripcion: a.descripcion ?? null,
+        restriccion_pintura: a.restriccion_pintura ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_porcentaje_nde',
       items: porcentajesNde,
-      mapPayload: (p) => ({ codigo: p.codigo, porcentaje: p.porcentaje ?? null, descripcion: p.descripcion ?? null }),
+      mapPayload: (p) => ({
+        codigo: p.codigo,
+        porcentaje: p.porcentaje ?? null,
+        descripcion: p.descripcion ?? null,
+        metodo: p.metodo ?? null,
+        aplicacion: p.aplicacion ?? null,
+        norma: p.norma ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_tipo_prueba',
       items: tiposPrueba,
-      mapPayload: (t) => ({ codigo: t.codigo, descripcion: t.descripcion ?? null }),
+      mapPayload: (t) => ({
+        codigo: t.codigo,
+        descripcion: t.descripcion ?? null,
+        aplicacion: t.aplicacion ?? null,
+        condicion_diseno: t.condicion_diseno ?? null,
+        medio_fluido: t.medio_fluido ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_tipo_union',
       items: tiposUnion,
-      mapPayload: (t) => ({ codigo: t.codigo, descripcion: t.descripcion ?? null }),
+      mapPayload: (t) => ({
+        codigo: t.codigo,
+        descripcion: t.descripcion ?? null,
+        acronimo: t.acronimo ?? null,
+        tipo_uniones: t.tipo_uniones ?? null,
+        metodo_trabajo: t.metodo_trabajo ?? null,
+        nde_requerido: t.nde_requerido ?? null,
+        aplicacion: t.aplicacion ?? null,
+      }),
     },
     {
       tablaDestino: 'cat_revestimiento_int',
       items: revestimientosInt,
-      mapPayload: (r) => ({ codigo: r.codigo, descripcion: r.descripcion ?? null }),
+      mapPayload: (r) => ({
+        codigo: r.codigo,
+        descripcion: r.descripcion ?? null,
+        especificacion: r.especificacion ?? null,
+      }),
     },
   ];
 
@@ -219,6 +270,31 @@ async function procesarDocumento(jwt, documentoId) {
     });
     if (errLote) throw new Error(`Error creando lote de ${tablaDestino}: ${errLote.message}`);
     loteIds.push(loteId);
+  }
+
+  // Guardar referencias externas detectadas
+  if (referencias_externas && referencias_externas.length > 0) {
+    const refsParaInsertar = referencias_externas
+      .filter((ref) => ref.codigo_documento && ref.codigo_documento.trim() !== '')
+      .map((ref) => ({
+        proyecto_id: doc.proyecto_id,
+        documento_id: documentoId,
+        codigo_documento: ref.codigo_documento.toUpperCase().trim(),
+        titulo: ref.titulo ? ref.titulo.trim() : null,
+        catalogo_sugerido: ref.catalogo_sugerido ? ref.catalogo_sugerido.trim() : null,
+        pagina: ref.paginas?.[0] ?? null,
+        cita: ref.contexto ? ref.contexto.trim() : null,
+        estado: 'pendiente'
+      }));
+
+    if (refsParaInsertar.length > 0) {
+      const { error: errRef } = await supabase
+        .from('documento_referencias')
+        .upsert(refsParaInsertar, { onConflict: 'proyecto_id,documento_id,codigo_documento' });
+      if (errRef) {
+        console.error('[ia-worker] error insertando referencias:', errRef.message);
+      }
+    }
   }
 
   const nChunks = await guardarChunks(supabase, documentoId, doc.proyecto_id, paginasTexto, async (msg) => {
@@ -242,6 +318,7 @@ async function procesarDocumento(jwt, documentoId) {
   // documento ya quedo indexado para busqueda semantica (nada que aprobar).
   await supabase.from('doc_biblioteca')
     .update({
+      codigo: codigo_documento ? codigo_documento.toUpperCase().trim() : null,
       estado_procesamiento: loteIds.length > 0 ? 'lote_generado' : 'procesado',
       n_paginas: nPaginas ?? paginasTexto.length,
       n_chunks: nChunks,
