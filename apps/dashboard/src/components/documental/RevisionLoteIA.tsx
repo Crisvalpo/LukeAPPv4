@@ -3,12 +3,21 @@ import { supabase } from '../../supabaseClient';
 import { Button } from '../ui/Button';
 import { useHeaderActions } from '../../hooks/useHeaderActions';
 
-type TablaDestino = 'cat_fluido_servicio' | 'cat_clase_piping';
+type TablaDestino =
+  | 'cat_fluido_servicio'
+  | 'cat_clase_piping'
+  | 'cat_diametros_nps'
+  | 'cat_esquema_pintura'
+  | 'cat_aislacion_ext'
+  | 'cat_porcentaje_nde'
+  | 'cat_tipo_prueba'
+  | 'cat_tipo_union';
 type Accion = 'nueva' | 'modificada' | 'sin_cambio' | 'error';
 
 interface CampoDef {
   campo: string;
   label: string;
+  tipo?: 'number';
 }
 
 const CAMPOS_POR_TABLA: Record<TablaDestino, CampoDef[]> = {
@@ -20,14 +29,57 @@ const CAMPOS_POR_TABLA: Record<TablaDestino, CampoDef[]> = {
     { campo: 'codigo', label: 'Código' },
     { campo: 'descripcion', label: 'Descripción' },
     { campo: 'fluido_codigo', label: 'Fluido asociado' },
-    { campo: 'presion_max', label: 'Presión máx.' },
-    { campo: 'temp_max', label: 'Temp. máx.' },
+    { campo: 'presion_max', label: 'Presión máx.', tipo: 'number' },
+    { campo: 'temp_max', label: 'Temp. máx.', tipo: 'number' },
+  ],
+  cat_diametros_nps: [
+    { campo: 'nps', label: 'NPS' },
+    { campo: 'nps_mm', label: 'Diámetro (mm)', tipo: 'number' },
+  ],
+  cat_esquema_pintura: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'descripcion', label: 'Descripción' },
+    { campo: 'capas', label: 'N° Capas', tipo: 'number' },
+  ],
+  cat_aislacion_ext: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'descripcion', label: 'Descripción' },
+  ],
+  cat_porcentaje_nde: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'porcentaje', label: 'Porcentaje (%)', tipo: 'number' },
+    { campo: 'descripcion', label: 'Descripción' },
+  ],
+  cat_tipo_prueba: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'descripcion', label: 'Descripción' },
+  ],
+  cat_tipo_union: [
+    { campo: 'codigo', label: 'Código' },
+    { campo: 'descripcion', label: 'Descripción' },
   ],
 };
 
 const TABLA_LABEL: Record<TablaDestino, string> = {
   cat_fluido_servicio: 'Fluidos y Servicios',
   cat_clase_piping: 'Clases de Piping',
+  cat_diametros_nps: 'Diámetros NPS',
+  cat_esquema_pintura: 'Esquemas de Pintura',
+  cat_aislacion_ext: 'Aislación Exterior',
+  cat_porcentaje_nde: 'Porcentaje NDE',
+  cat_tipo_prueba: 'Tipos de Prueba',
+  cat_tipo_union: 'Tipos de Unión',
+};
+
+const CLAVE_NATURAL_POR_TABLA: Record<TablaDestino, string> = {
+  cat_fluido_servicio: 'codigo',
+  cat_clase_piping: 'codigo',
+  cat_diametros_nps: 'nps',
+  cat_esquema_pintura: 'codigo',
+  cat_aislacion_ext: 'codigo',
+  cat_porcentaje_nde: 'codigo',
+  cat_tipo_prueba: 'codigo',
+  cat_tipo_union: 'codigo',
 };
 
 interface FilaImport {
@@ -169,11 +221,11 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
   };
 
   const handleGuardarCambiosFila = async () => {
-    if (!seleccionada || !loteActivoId) return;
+    if (!seleccionada || !loteActivoId || !loteActivo) return;
     setGuardandoFila(true);
     setError(null);
     try {
-      const campoClave = 'codigo';
+      const campoClave = CLAVE_NATURAL_POR_TABLA[loteActivo.tabla_destino];
       const nuevoCodigo = (payloadEditado[campoClave] ?? '').toUpperCase().trim();
 
       const { error: errUpdate } = await supabase
@@ -366,7 +418,7 @@ export const RevisionLoteIA: React.FC<RevisionLoteIAProps> = ({ docId, onBack, o
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">Datos Propuestos Finales (Editables)</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {campos.map((c) => {
-                      const tipoInput = (c.campo === 'presion_max' || c.campo === 'temp_max') ? 'number' : 'text';
+                      const tipoInput = c.tipo === 'number' ? 'number' : 'text';
                       return (
                         <div key={c.campo} className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
                           <label className="text-[10px] font-bold text-muted-foreground uppercase">{c.label}</label>

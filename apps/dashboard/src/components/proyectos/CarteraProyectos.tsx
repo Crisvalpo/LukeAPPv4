@@ -82,20 +82,56 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     fetchProyectos();
   };
 
+  // El borrado de un proyecto solo elimina en cascada las FILAS de las tablas
+  // (doc_biblioteca, list_pid, import_lotes, etc.) — los archivos físicos en
+  // Storage viven en un sistema aparte sin FK hacia proyectos, así que hay que
+  // recolectar sus paths ANTES del DELETE (la cascada los borra de la tabla)
+  // y removerlos explícitamente para no dejar carpetas huérfanas en los buckets.
+  const limpiarStorageProyecto = async (proyectoId: string) => {
+    try {
+      const [docs, pids, lotes] = await Promise.all([
+        supabase.from('doc_biblioteca').select('storage_path').eq('proyecto_id', proyectoId),
+        supabase.from('list_pid').select('pdf_path').eq('proyecto_id', proyectoId),
+        supabase.from('import_lotes').select('archivo_storage_path').eq('proyecto_id', proyectoId),
+      ]);
+
+      const pathsDocumentos = [
+        ...(docs.data ?? []).map((d) => d.storage_path),
+        ...(pids.data ?? []).map((p) => p.pdf_path),
+      ].filter((p): p is string => !!p);
+
+      const pathsImportaciones = (lotes.data ?? [])
+        .map((l) => l.archivo_storage_path)
+        .filter((p): p is string => !!p);
+
+      if (pathsDocumentos.length > 0) {
+        const { error } = await supabase.storage.from('documentos').remove(pathsDocumentos);
+        if (error) console.error('[CarteraProyectos] error limpiando bucket documentos:', error.message);
+      }
+      if (pathsImportaciones.length > 0) {
+        const { error } = await supabase.storage.from('importaciones').remove(pathsImportaciones);
+        if (error) console.error('[CarteraProyectos] error limpiando bucket importaciones:', error.message);
+      }
+    } catch (e) {
+      console.error('[CarteraProyectos] error recolectando archivos de storage del proyecto:', e);
+    }
+  };
+
   const handleEliminarProyecto = async (proyectoId: string, codigo: string) => {
     const input = window.prompt(
       `Estás a punto de eliminar permanentemente el proyecto ${codigo} y todos sus datos en cascada.\n\n` +
       `Para confirmar esta acción irreversible, por favor escribe el nombre del proyecto (${codigo}) a continuación:`
     );
-    
+
     if (input !== codigo) {
       if (input !== null) {
         alert('El nombre ingresado no coincide. Eliminación cancelada.');
       }
       return;
     }
-    
+
     setLoading(true);
+    await limpiarStorageProyecto(proyectoId);
     const { data, error: err } = await supabase.from('proyectos').delete().eq('id', proyectoId).select();
     
     if (err) {
