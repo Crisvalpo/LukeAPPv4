@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button } from '../ui/Button';
 
@@ -30,6 +30,17 @@ interface SugerenciaIA {
   catalogoId: string;
   payload: Record<string, any>;
   confianza: number;
+}
+
+type OrigenFila = 'registrado' | 'sugerencia' | 'nueva';
+
+interface FilaTabla {
+  key: string;
+  id: string | null;
+  valores: Record<string, string>;
+  origen: OrigenFila;
+  confianza?: number;
+  dirty: boolean;
 }
 
 const CATALOGOS: CatalogoConfig[] = [
@@ -113,6 +124,12 @@ const CATALOGOS: CatalogoConfig[] = [
 
 const catalogoPorId = (id: string): CatalogoConfig => CATALOGOS.find((c) => c.id === id) ?? CATALOGOS[0];
 
+const filaVaciaDesde = (campos: CampoCatalogo[]): Record<string, string> =>
+  Object.fromEntries(campos.map((c) => [c.key, '']));
+
+const valoresDesdeObjeto = (campos: CampoCatalogo[], obj: Record<string, any>): Record<string, string> =>
+  Object.fromEntries(campos.map((c) => [c.key, obj[c.key] != null ? String(obj[c.key]) : '']));
+
 export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesProps> = ({ proyectoId, documentoId, onBack }) => {
   const [documentoUrl, setDocumentoUrl] = useState<string | null>(null);
   const [tituloDoc, setTituloDoc] = useState('');
@@ -123,13 +140,14 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
   const [datos, setDatos] = useState<Record<string, any[]>>({});
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
-  // Formulario de ingreso, genérico por campo.key de la pestaña activa
-  const [form, setForm] = useState<Record<string, string>>({});
-  const [guardando, setGuardando] = useState(false);
-
   // Sugerencias IA
   const [sugerencias, setSugerencias] = useState<SugerenciaIA[]>([]);
   const [loadingIA, setLoadingIA] = useState(true);
+
+  // Tabla fusionada (registrados + sugerencias sin confirmar + filas nuevas) de la pestaña activa
+  const [filas, setFilas] = useState<FilaTabla[]>([]);
+  const [guardandoKey, setGuardandoKey] = useState<string | null>(null);
+  const pestanaAnteriorRef = useRef(pestana);
 
   const catalogoActivo = catalogoPorId(pestana);
 
@@ -182,10 +200,6 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
     fetchCatalogos();
   }, [proyectoId]);
 
-  useEffect(() => {
-    setForm({});
-  }, [pestana]);
-
   // Leer sugerencias reales de la IA desde las tablas de staging del documento
   useEffect(() => {
     const fetchSugerenciasIA = async () => {
@@ -207,7 +221,7 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
         const loteIds = lotes.map((l) => l.id);
 
         // 2. Traer las filas de esos lotes
-        const { data: filas, error: errFilas } = await supabase
+        const { data: filasLote, error: errFilas } = await supabase
           .from('import_filas')
           .select('*, import_lotes(perfil_id, import_perfiles(tabla_destino))')
           .in('lote_id', loteIds)
@@ -216,7 +230,7 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
         if (errFilas) throw errFilas;
 
         // 3. Mapear las filas a sugerencias, resolviendo tabla_destino -> catálogo
-        const mapeadas: SugerenciaIA[] = (filas || [])
+        const mapeadas: SugerenciaIA[] = (filasLote || [])
           .map((f: any) => {
             const lote = Array.isArray(f.import_lotes) ? f.import_lotes[0] : f.import_lotes;
             const perfil = lote?.import_perfiles;
@@ -242,27 +256,79 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
     fetchSugerenciasIA();
   }, [documentoId]);
 
-  const handleAplicarSugerencia = (s: SugerenciaIA) => {
-    setPestana(s.catalogoId);
-    const catalogo = catalogoPorId(s.catalogoId);
-    const nuevoForm: Record<string, string> = {};
-    catalogo.campos.forEach((campo) => {
-      const valor = s.payload[campo.key];
-      nuevoForm[campo.key] = valor != null ? String(valor) : '';
+  // Reconstruye la tabla fusionada de la pestaña activa: filas ya registradas +
+  // sugerencias IA que aún no calzan con ningún registro + filas nuevas agregadas
+  // a mano. Preserva ediciones locales no guardadas (dirty) al refrescar datos/sugerencias,
+  // y descarta filas nuevas/dirty al cambiar de pestaña.
+  useEffect(() => {
+    const cambioDePestana = pestanaAnteriorRef.current !== pestana;
+    pestanaAnteriorRef.current = pestana;
+
+    setFilas((prev) => {
+      const prevByKey = cambioDePestana ? new Map<string, FilaTabla>() : new Map(prev.map((f) => [f.key, f]));
+
+      const registrados: FilaTabla[] = (datos[pestana] ?? []).map((item) => {
+        const key = item.id as string;
+        const prevFila = prevByKey.get(key);
+        if (prevFila?.dirty) return prevFila;
+        return {
+          key,
+          id: key,
+          valores: valoresDesdeObjeto(catalogoActivo.campos, item),
+          origen: 'registrado',
+          dirty: false,
+        };
+      });
+
+      const clavesRegistradas = new Set(
+        registrados.map((f) => (f.valores[catalogoActivo.claveNatural] || '').toUpperCase())
+      );
+
+      const sugeridos: FilaTabla[] = sugerencias
+        .filter((s) => s.catalogoId === pestana)
+        .filter((s) => !clavesRegistradas.has(String(s.payload[catalogoActivo.claveNatural] ?? '').toUpperCase()))
+        .map((s, idx) => {
+          const key = `sugerencia-${pestana}-${idx}`;
+          const prevFila = prevByKey.get(key);
+          if (prevFila?.dirty) return prevFila;
+          return {
+            key,
+            id: null,
+            valores: valoresDesdeObjeto(catalogoActivo.campos, s.payload),
+            origen: 'sugerencia',
+            confianza: s.confianza,
+            dirty: false,
+          };
+        });
+
+      const nuevasManuales = cambioDePestana ? [] : prev.filter((f) => f.origen === 'nueva');
+
+      return [...registrados, ...sugeridos, ...nuevasManuales];
     });
-    setForm(nuevoForm);
+  }, [pestana, datos, sugerencias, catalogoActivo]);
+
+  const handleCambiarValor = (key: string, campoKey: string, valor: string) => {
+    setFilas((prev) =>
+      prev.map((f) => (f.key === key ? { ...f, valores: { ...f.valores, [campoKey]: valor }, dirty: true } : f))
+    );
   };
 
-  const handleGuardarCatalogo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const camposRequeridos = catalogoActivo.campos.filter((c) => c.requerido);
-    if (camposRequeridos.some((c) => !form[c.key]?.trim())) return;
-    setGuardando(true);
+  const handleAgregarFilaManual = () => {
+    const key = `nueva-${Date.now()}`;
+    setFilas((prev) => [...prev, { key, id: null, valores: filaVaciaDesde(catalogoActivo.campos), origen: 'nueva', dirty: true }]);
+  };
 
+  const handleGuardarFila = async (fila: FilaTabla) => {
+    const camposRequeridos = catalogoActivo.campos.filter((c) => c.requerido);
+    if (camposRequeridos.some((c) => !fila.valores[c.key]?.trim())) {
+      alert('Completa los campos obligatorios antes de guardar.');
+      return;
+    }
+    setGuardandoKey(fila.key);
     try {
       const payload: Record<string, any> = { proyecto_id: proyectoId };
       catalogoActivo.campos.forEach((campo) => {
-        const valorCrudo = form[campo.key]?.trim() ?? '';
+        const valorCrudo = fila.valores[campo.key]?.trim() ?? '';
         if (campo.tipo === 'number') {
           payload[campo.key] = valorCrudo ? parseFloat(valorCrudo) : null;
         } else {
@@ -270,29 +336,47 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
         }
       });
 
-      const { error } = await supabase.from(catalogoActivo.tabla).insert(payload);
-      if (error) throw error;
+      if (fila.id) {
+        const { error } = await supabase.from(catalogoActivo.tabla).update(payload).eq('id', fila.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from(catalogoActivo.tabla).insert(payload);
+        if (error) throw error;
+      }
 
-      setForm({});
+      // Se quita la fila local (editada o temporal); el refetch la repone ya persistida.
+      setFilas((prev) => prev.filter((f) => f.key !== fila.key));
       await fetchCatalogos();
     } catch (err: any) {
-      alert(err.message || 'Error al guardar elemento del catálogo.');
+      alert(err.message || 'Error al guardar la fila.');
     } finally {
-      setGuardando(false);
+      setGuardandoKey(null);
     }
   };
 
-  const handleEliminarElemento = async (catalogoId: string, id: string) => {
-    const catalogo = catalogoPorId(catalogoId);
-    if (!confirm(`¿Estás seguro de que deseas eliminar este elemento de "${catalogo.label}" del catálogo del proyecto?`)) return;
+  const handleEliminarFila = async (fila: FilaTabla) => {
+    if (!fila.id) {
+      // Sugerencia o fila nueva sin guardar: solo se descarta localmente.
+      setFilas((prev) => prev.filter((f) => f.key !== fila.key));
+      return;
+    }
+    if (!confirm(`¿Estás seguro de que deseas eliminar este elemento de "${catalogoActivo.label}" del catálogo del proyecto?`)) return;
 
     try {
-      const { error } = await supabase.from(catalogo.tabla).delete().eq('id', id);
+      const { error } = await supabase.from(catalogoActivo.tabla).delete().eq('id', fila.id);
       if (error) throw error;
       await fetchCatalogos();
     } catch (err: any) {
       alert(err.message || 'Error al eliminar el elemento del catálogo.');
     }
+  };
+
+  const pendientesPorCatalogo = (catId: string): number => {
+    const cat = catalogoPorId(catId);
+    const registrados = new Set((datos[catId] ?? []).map((item) => String(item[cat.claveNatural] ?? '').toUpperCase()));
+    return sugerencias.filter(
+      (s) => s.catalogoId === catId && !registrados.has(String(s.payload[cat.claveNatural] ?? '').toUpperCase())
+    ).length;
   };
 
   return (
@@ -338,155 +422,134 @@ export const ConstructorEspecificaciones: React.FC<ConstructorEspecificacionesPr
         </button>
 
         {/* Panel Constructor de Catálogo (Derecha) */}
-        <div className={`h-full flex flex-col bg-panel overflow-y-auto p-6 space-y-6 ${pdfColapsado ? 'flex-grow' : 'w-[45%]'}`}>
+        <div className={`h-full flex flex-col bg-panel p-6 gap-4 min-h-0 ${pdfColapsado ? 'flex-grow' : 'w-[45%]'}`}>
           {/* Tabs */}
-          <div className="flex border-b border-border overflow-x-auto">
-            {CATALOGOS.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setPestana(cat.id)}
-                className={`shrink-0 px-4 text-center py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-                  pestana === cat.id ? 'text-accent border-accent' : 'text-muted-foreground border-transparent hover:text-white'
-                }`}
-              >
-                {cat.label} ({datos[cat.id]?.length ?? 0})
-              </button>
-            ))}
+          <div className="flex border-b border-border overflow-x-auto shrink-0">
+            {CATALOGOS.map((cat) => {
+              const pendientes = pendientesPorCatalogo(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setPestana(cat.id)}
+                  className={`shrink-0 px-4 text-center py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                    pestana === cat.id ? 'text-accent border-accent' : 'text-muted-foreground border-transparent hover:text-white'
+                  }`}
+                >
+                  {cat.label} ({datos[cat.id]?.length ?? 0}{pendientes > 0 ? ` +${pendientes} IA` : ''})
+                </button>
+              );
+            })}
           </div>
 
-          {/* Constructor Formulario */}
-          <div className="bg-card border border-border p-4 rounded-lg">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4">
-              Agregar a {catalogoActivo.label}
-            </h4>
-            <form onSubmit={handleGuardarCatalogo} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {catalogoActivo.campos.map((campo) => (
-                  <div
-                    key={campo.key}
-                    className={`flex flex-col gap-1 ${campo.esClave || campo.key === 'descripcion' ? 'col-span-2 sm:col-span-1' : ''}`}
-                  >
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase">{campo.label}</label>
-                    <input
-                      type={campo.tipo}
-                      step={campo.tipo === 'number' ? 'any' : undefined}
-                      placeholder={campo.placeholder}
-                      value={form[campo.key] ?? ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, [campo.key]: e.target.value }))}
-                      className={`bg-panel border border-border text-foreground px-3 py-1.5 rounded text-xs font-semibold focus:outline-none focus:border-accent ${campo.esClave ? 'uppercase' : ''}`}
-                      required={campo.requerido}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button variant="primary" size="sm" type="submit" disabled={guardando}>
-                  {guardando ? 'Guardando...' : `Registrar ${catalogoActivo.labelSingular}`}
-                </Button>
-              </div>
-            </form>
+          {/* Header de la tabla activa */}
+          <div className="flex items-center justify-between shrink-0">
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">{catalogoActivo.label}</h4>
+              {loadingIA && <p className="text-[10px] text-muted-foreground mt-0.5">Leyendo sugerencias de la IA...</p>}
+            </div>
+            <Button variant="outline" size="sm" onClick={handleAgregarFilaManual}>
+              + Agregar Fila
+            </Button>
           </div>
 
-          {/* Sugerencias de IA */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-              💡 Sugerencias Extraídas por IA (Gemini)
-            </h4>
-            {loadingIA ? (
-              <div className="text-xs text-muted-foreground font-medium py-2">Leyendo documento con IA...</div>
-            ) : sugerencias.length === 0 ? (
-              <div className="text-xs text-amber-400/90 bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg leading-relaxed font-medium">
-                ⚠️ Este documento aún no ha sido procesado por IA. Ve a la <strong>Biblioteca Documental</strong> y haz clic en <strong>Procesar con IA</strong> para extraer los datos y generar las propuestas reales.
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {sugerencias
-                  .filter((s) => s.catalogoId === pestana)
-                  .map((s, idx) => {
-                    const claveValor = String(s.payload[catalogoActivo.claveNatural] ?? '').toUpperCase();
-                    const yaRegistrado = (datos[pestana] ?? []).some(
-                      (item) => String(item[catalogoActivo.claveNatural] ?? '').toUpperCase() === claveValor
-                    );
-                    const extras = catalogoActivo.campos.filter(
-                      (c) => c.key !== catalogoActivo.claveNatural && c.key !== 'descripcion' && s.payload[c.key] != null && s.payload[c.key] !== ''
-                    );
+          {!loadingIA && sugerencias.length === 0 && (
+            <div className="text-xs text-amber-400/90 bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg leading-relaxed font-medium shrink-0">
+              ⚠️ Este documento aún no ha sido procesado por IA. Ve a la <strong>Biblioteca Documental</strong> y haz clic en <strong>Procesar con IA</strong> para extraer los datos y generar las propuestas reales.
+            </div>
+          )}
 
-                    return (
-                      <div key={idx} className="bg-card border border-border/80 p-3 rounded flex items-center justify-between text-xs transition-colors hover:border-accent">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-accent bg-accent/10 px-1.5 py-0.5 rounded text-[10px]">
-                              {claveValor}
-                            </span>
-                            {s.payload.descripcion && <span className="font-bold text-white">{s.payload.descripcion}</span>}
-                          </div>
-                          {extras.length > 0 && (
-                            <span className="text-[10px] text-muted-foreground mt-0.5">
-                              {extras.map((c) => `${c.label}: ${s.payload[c.key]}`).join(' | ')}
-                            </span>
-                          )}
-                          <span className="text-[9px] text-emerald-400 font-bold mt-0.5">
-                            Confianza IA: {(s.confianza * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        {yaRegistrado ? (
-                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
-                            ✓ Agregado
-                          </span>
-                        ) : (
-                          <Button variant="outline" size="sm" onClick={() => handleAplicarSugerencia(s)} className="py-1">
-                            Usar
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-
-          {/* Elementos Registrados en Catálogo */}
-          <div className="space-y-3 pt-4 border-t border-border">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-              📋 Elementos en el Catálogo del Proyecto
-            </h4>
-            {loadingCatalogos ? (
-              <div className="text-xs text-muted-foreground font-medium py-2">Cargando catálogo...</div>
-            ) : (datos[pestana]?.length ?? 0) === 0 ? (
-              <div className="text-xs text-muted-foreground font-medium py-2">No hay elementos registrados aún.</div>
-            ) : (
-              <div className="grid gap-1.5 max-h-56 overflow-y-auto">
-                {(datos[pestana] ?? []).map((item) => {
-                  const extras = catalogoActivo.campos.filter(
-                    (c) => c.key !== catalogoActivo.claveNatural && c.key !== 'descripcion' && item[c.key] != null && item[c.key] !== ''
-                  );
-                  return (
-                    <div key={item.id} className="bg-card/40 border border-border/60 px-3 py-2 rounded flex flex-col gap-0.5 text-xs font-medium text-foreground">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEliminarElemento(pestana, item.id)}
-                            className="text-red-400/60 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-red-500/10 focus:outline-none"
-                            title="Eliminar de catálogo"
+          {/* Tabla fusionada: registrados + sugerencias IA + filas nuevas */}
+          <div className="flex-1 min-h-0 overflow-auto border border-border rounded-lg">
+            <table className="w-full text-xs border-collapse">
+              <thead className="sticky top-0 bg-card z-10">
+                <tr>
+                  <th className="p-2 w-8 border-b border-border" />
+                  {catalogoActivo.campos.map((campo) => (
+                    <th key={campo.key} className="p-2 text-left font-bold text-white uppercase text-[10px] border-b border-border">
+                      {campo.label}
+                    </th>
+                  ))}
+                  <th className="p-2 w-28 border-b border-border" />
+                </tr>
+              </thead>
+              <tbody>
+                {loadingCatalogos ? (
+                  <tr>
+                    <td colSpan={catalogoActivo.campos.length + 2} className="p-4 text-center text-muted-foreground">
+                      Cargando catálogo...
+                    </td>
+                  </tr>
+                ) : filas.length === 0 ? (
+                  <tr>
+                    <td colSpan={catalogoActivo.campos.length + 2} className="p-4 text-center text-muted-foreground">
+                      Sin elementos. Procesa el documento con IA o agrega una fila manualmente.
+                    </td>
+                  </tr>
+                ) : (
+                  filas.map((fila) => (
+                    <tr
+                      key={fila.key}
+                      className={`border-b border-border/40 ${
+                        fila.origen === 'sugerencia' ? 'bg-accent/5' : fila.origen === 'nueva' ? 'bg-emerald-500/5' : ''
+                      }`}
+                    >
+                      <td className="p-1 text-center align-middle">
+                        {fila.origen === 'sugerencia' && (
+                          <span
+                            title={`Sugerido por IA — ${Math.round((fila.confianza ?? 0) * 100)}% confianza`}
+                            className="text-[9px] font-extrabold text-accent"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            IA
+                          </span>
+                        )}
+                        {fila.origen === 'nueva' && (
+                          <span title="Fila nueva sin guardar" className="text-[9px] font-extrabold text-emerald-400">
+                            +
+                          </span>
+                        )}
+                        {fila.origen === 'registrado' && fila.dirty && (
+                          <span title="Cambios sin guardar" className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                        )}
+                      </td>
+                      {catalogoActivo.campos.map((campo) => (
+                        <td key={campo.key} className="p-1 align-middle">
+                          <input
+                            type={campo.tipo}
+                            step={campo.tipo === 'number' ? 'any' : undefined}
+                            placeholder={campo.placeholder}
+                            value={fila.valores[campo.key] ?? ''}
+                            onChange={(e) => handleCambiarValor(fila.key, campo.key, e.target.value)}
+                            className={`w-full bg-transparent border border-transparent px-1.5 py-1 rounded text-xs focus:outline-none focus:bg-panel focus:border-accent ${
+                              campo.esClave ? 'uppercase font-extrabold text-white' : 'font-medium text-foreground'
+                            }`}
+                          />
+                        </td>
+                      ))}
+                      <td className="p-1 text-right whitespace-nowrap align-middle">
+                        {(fila.dirty || fila.origen !== 'registrado') && (
+                          <button
+                            onClick={() => handleGuardarFila(fila)}
+                            disabled={guardandoKey === fila.key}
+                            className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-1.5 py-0.5 rounded hover:bg-emerald-500/10 mr-1 disabled:opacity-40"
+                          >
+                            {guardandoKey === fila.key ? '...' : 'Guardar'}
                           </button>
-                          <span className="font-extrabold text-white">{String(item[catalogoActivo.claveNatural] ?? '').toUpperCase()}</span>
-                        </div>
-                        {item.descripcion && <span className="text-muted-foreground text-right">{item.descripcion}</span>}
-                      </div>
-                      {extras.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground mt-0.5 ml-6">
-                          {extras.map((c) => `${c.label}: ${item[c.key]}`).join(' | ')}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                        )}
+                        <button
+                          onClick={() => handleEliminarFila(fila)}
+                          title={fila.id ? 'Eliminar de catálogo' : 'Descartar'}
+                          className="text-red-400/60 hover:text-red-400 transition-colors p-0.5 rounded hover:bg-red-500/10 focus:outline-none"
+                        >
+                          <svg className="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
