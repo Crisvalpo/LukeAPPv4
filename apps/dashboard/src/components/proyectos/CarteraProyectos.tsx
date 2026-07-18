@@ -36,6 +36,7 @@ const ESTADO_META: Record<string, { label: string; color: string }> = {
 
 interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
+  onAbrirCatalogos: (proyectoId: string) => void;
   onAbrirCubicador: (proyectoId: string) => void;
   onAbrirPids: (proyectoId: string) => void;
   onAbrirAWP: (proyectoId: string) => void;
@@ -43,7 +44,7 @@ interface CarteraProyectosProps {
   esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCubicador, onAbrirPids, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCatalogos, onAbrirCubicador, onAbrirPids, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +161,9 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
         </Button>
         <Button variant="primary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
           1. Documentos
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onAbrirCatalogos(seleccionado.id)}>
+          2. Catálogos
         </Button>
         <Button variant="secondary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
           3. Datos / Line List

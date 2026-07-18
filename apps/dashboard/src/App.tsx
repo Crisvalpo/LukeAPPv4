@@ -132,9 +132,10 @@ function App() {
     setProyectoActivo(proyectoId);
     setVista('biblioteca_pids');
   };
-
-
-
+  const handleAbrirCatalogos = (proyectoId: string) => {
+    setProyectoActivo(proyectoId);
+    setVista('catalogos');
+  };
   const handleAbrirAWP = (proyectoId: string) => {
     setProyectoActivo(proyectoId);
     setVista('awp');
@@ -416,6 +417,7 @@ function App() {
         {vista === 'cartera' && (
           <CarteraProyectos
             onAbrirIngesta={handleAbrirIngesta}
+            onAbrirCatalogos={handleAbrirCatalogos}
             onAbrirCubicador={handleAbrirCubicador}
             onAbrirPids={handleAbrirPids}
             onAbrirAWP={handleAbrirAWP}
