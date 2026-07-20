@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button } from '../ui/Button';
 import { useHeaderActions } from '../../hooks/useHeaderActions';
-import { GestionCuadrillas } from './GestionCuadrillas';
-import { ConfiguracionBotPersonal } from './ConfiguracionBotPersonal';
 
 interface DotacionPersonalProps {
   proyectoId: string;
@@ -48,7 +46,7 @@ const CAMPOS: CampoPersonal[] = [
 
 const filaVacia = (): Record<string, string> => {
   const valores = Object.fromEntries(CAMPOS.map((c) => [c.key, '']));
-  valores.activo = 'true';
+  valores.activo = 'true'; // Activo por defecto
   return valores;
 };
 
@@ -60,10 +58,7 @@ const valoresDesdeObjeto = (obj: Record<string, any>): Record<string, string> =>
     ])
   );
 
-// ================================================================
-// SUB-COMPONENTE: TABLA DE NÓMINA DE PERSONAL
-// ================================================================
-const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) => {
+export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }) => {
   const [datos, setDatos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filas, setFilas] = useState<FilaTabla[]>([]);
@@ -129,6 +124,7 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
         if (campo.key === 'activo') {
           payload[campo.key] = valorCrudo === 'true';
         } else if (campo.esClave) {
+          // El RUT o campos clave en mayúsculas y normalizados
           payload[campo.key] = campo.key === 'rut'
             ? valorCrudo.toUpperCase().replace(/[^0-9K]/g, '')
             : valorCrudo.toUpperCase();
@@ -159,7 +155,7 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
       setFilas((prev) => prev.filter((f) => f.key !== fila.key));
       return;
     }
-    if (!confirm('¿Estás seguro de que deseas eliminar esta persona?')) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar esta persona del personal del proyecto?')) return;
 
     try {
       const { error } = await supabase.from('cat_personal').delete().eq('id', fila.id);
@@ -170,7 +166,7 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
     }
   };
 
-  // Registrar botón dinámico en la cabecera cuando la nómina está activa
+  // Registrar la acción primaria en el header superior usando el hook useHeaderActions
   useHeaderActions(
     <Button variant="primary" size="sm" onClick={handleAgregarFilaManual}>
       + Agregar Personal
@@ -178,12 +174,19 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
   );
 
   return (
-    <div className="flex-grow flex flex-col h-full min-h-0 overflow-hidden">
-      <div className="flex items-center justify-between shrink-0 mb-3">
+    <div className="flex-grow p-6 space-y-4 bg-background text-foreground font-sans flex flex-col h-[calc(100vh-4rem)]">
+      <div className="border-b border-border pb-4 shrink-0">
+        <h2 className="text-xl font-bold text-white tracking-tight">Personal & Dotación</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Identidad unificada (Buk) y personal certificado del proyecto. Administra operarios, soldadores, supervisores y capataces.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between shrink-0">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider">Personal registrado ({datos.length})</h4>
       </div>
 
-      <div className="flex-grow min-h-0 overflow-auto border border-border rounded-lg">
+      <div className="flex-1 min-h-0 overflow-auto border border-border rounded-lg">
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 bg-card z-10">
             <tr>
@@ -206,7 +209,7 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
             ) : filas.length === 0 ? (
               <tr>
                 <td colSpan={CAMPOS.length + 2} className="p-4 text-center text-muted-foreground">
-                  Sin personal registrado. Agrega una persona con el botón de la barra superior.
+                  Sin personal registrado. Agrega una persona haciendo clic en el botón de la barra superior.
                 </td>
               </tr>
             ) : (
@@ -274,74 +277,6 @@ const DotacionNominaTabla: React.FC<{ proyectoId: string }> = ({ proyectoId }) =
             )}
           </tbody>
         </table>
-      </div>
-    </div>
-  );
-};
-
-// ================================================================
-// COMPONENTE PRINCIPAL / CONTENEDOR UNIFICADO DE DOTACIÓN
-// ================================================================
-export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }) => {
-  const [subVista, setSubVista] = useState<'nomina' | 'cuadrillas' | 'bot'>('nomina');
-
-  return (
-    <div className="flex-grow p-6 bg-background text-foreground font-sans flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-      {/* Cabecera del Módulo */}
-      <div className="border-b border-border pb-4 shrink-0 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Módulo de Personal & Dotación</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Gestión centralizada de personal (espejo Buk), asignación diaria de cuadrillas dinámicas en terreno y vinculación del Bot.
-          </p>
-        </div>
-
-        {/* Botonera de Sub-Navegación Local */}
-        <div className="flex items-center bg-card border border-border/60 rounded-lg p-0.5 w-fit">
-          <button
-            onClick={() => setSubVista('nomina')}
-            className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors ${
-              subVista === 'nomina' ? 'bg-accent text-white shadow' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Nómina de Personal
-          </button>
-          <button
-            onClick={() => setSubVista('cuadrillas')}
-            className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors ${
-              subVista === 'cuadrillas' ? 'bg-accent text-white shadow' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Gestión de Cuadrillas
-          </button>
-          <button
-            onClick={() => setSubVista('bot')}
-            className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors ${
-              subVista === 'bot' ? 'bg-accent text-white shadow' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            WhatsApp Bot
-          </button>
-        </div>
-      </div>
-
-      {/* Render Condicional de las Vistas Internas */}
-      <div className="flex-grow min-h-0 pt-4 overflow-hidden flex flex-col">
-        {subVista === 'nomina' && (
-          <DotacionNominaTabla proyectoId={proyectoId} />
-        )}
-        
-        {subVista === 'cuadrillas' && (
-          <div className="flex-grow overflow-hidden flex flex-col">
-            <GestionCuadrillas proyectoId={proyectoId} />
-          </div>
-        )}
-        
-        {subVista === 'bot' && (
-          <div className="flex-grow overflow-hidden flex flex-col">
-            <ConfiguracionBotPersonal proyectoId={proyectoId} />
-          </div>
-        )}
       </div>
     </div>
   );

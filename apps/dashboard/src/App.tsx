@@ -16,6 +16,8 @@ import { BibliotecaPIDs } from './components/documental/BibliotecaPIDs';
 import { AWPCatalogos } from './components/proyectos/AWPCatalogos';
 import { GestionCatalogos } from './components/proyectos/GestionCatalogos';
 import { DotacionPersonal } from './components/proyectos/DotacionPersonal';
+import { GestionCuadrillas } from './components/proyectos/GestionCuadrillas';
+import { ConfiguracionBotPersonal } from './components/proyectos/ConfiguracionBotPersonal';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
 import { HeaderActionsContext } from './hooks/useHeaderActions';
@@ -24,7 +26,7 @@ import { HeaderActionsContext } from './hooks/useHeaderActions';
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
 const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'awp' | 'dotacion' | 'catalogos';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'awp' | 'dotacion' | 'cuadrillas' | 'config_bot' | 'catalogos';
 
 interface Perfil {
   estado_cuenta: 'pendiente' | 'aprobado' | 'rechazado';
@@ -50,6 +52,7 @@ function App() {
   // proyecto_id siempre viene del contexto de navegación (drill-down), nunca hardcodeado
   const [proyectoActivo, setProyectoActivo] = useState<string | null>(null);
   const [docSeleccionado, setDocSeleccionado] = useState<string | null>(null);
+  const [menuDotacionAbierto, setMenuDotacionAbierto] = useState(false);
 
   const [membresias, setMembresias] = useState<any[]>([]);
   const [proyectoActivoDetalle, setProyectoActivoDetalle] = useState<{ codigo: string; nombre: string } | null>(null);
@@ -311,14 +314,48 @@ function App() {
                   >
                     AWP (Avanzado)
                   </Button>
-                  <Button
-                    variant={vista === 'dotacion' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => { setVista('dotacion'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
-                  >
-                    Dotación
-                  </Button>
+                  <div className="relative">
+                    <Button
+                      variant={(vista === 'dotacion' || vista === 'cuadrillas' || vista === 'config_bot') ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setMenuDotacionAbierto((v) => !v)}
+                      className="py-1 px-2.5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                    >
+                      Dotación
+                      <span className="text-[8px] opacity-70">▼</span>
+                    </Button>
+                    {menuDotacionAbierto && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setMenuDotacionAbierto(false)} />
+                        <div className="absolute left-0 top-full mt-1.5 w-44 bg-panel border border-border rounded-lg shadow-2xl z-50 py-1.5 flex flex-col">
+                          <button
+                            onClick={() => { setVista('dotacion'); setDocSeleccionado(null); setMenuDotacionAbierto(false); }}
+                            className={`text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                              vista === 'dotacion' ? 'text-accent bg-accent/10' : 'text-muted hover:bg-card/60 hover:text-foreground'
+                            }`}
+                          >
+                            Nómina de Personal
+                          </button>
+                          <button
+                            onClick={() => { setVista('cuadrillas'); setDocSeleccionado(null); setMenuDotacionAbierto(false); }}
+                            className={`text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                              vista === 'cuadrillas' ? 'text-accent bg-accent/10' : 'text-muted hover:bg-card/60 hover:text-foreground'
+                            }`}
+                          >
+                            Gestión de Cuadrillas
+                          </button>
+                          <button
+                            onClick={() => { setVista('config_bot'); setDocSeleccionado(null); setMenuDotacionAbierto(false); }}
+                            className={`text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                              vista === 'config_bot' ? 'text-accent bg-accent/10' : 'text-muted hover:bg-card/60 hover:text-foreground'
+                            }`}
+                          >
+                            WhatsApp Bot
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -467,6 +504,18 @@ function App() {
 
         {vista === 'dotacion' && proyectoActivo && (
           <DotacionPersonal
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'cuadrillas' && proyectoActivo && (
+          <GestionCuadrillas
+            proyectoId={proyectoActivo}
+          />
+        )}
+
+        {vista === 'config_bot' && proyectoActivo && (
+          <ConfiguracionBotPersonal
             proyectoId={proyectoActivo}
           />
         )}
