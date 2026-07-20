@@ -16,8 +16,6 @@ import { BibliotecaPIDs } from './components/documental/BibliotecaPIDs';
 import { AWPCatalogos } from './components/proyectos/AWPCatalogos';
 import { GestionCatalogos } from './components/proyectos/GestionCatalogos';
 import { DotacionPersonal } from './components/proyectos/DotacionPersonal';
-import { GestionCuadrillas } from './components/proyectos/GestionCuadrillas';
-import { ConfiguracionBotPersonal } from './components/proyectos/ConfiguracionBotPersonal';
 import { Button } from './components/ui/Button';
 import { Settings } from 'lucide-react';
 import { HeaderActionsContext } from './hooks/useHeaderActions';
@@ -26,7 +24,7 @@ import { HeaderActionsContext } from './hooks/useHeaderActions';
 // landing (nunca para usuarios ya logueados ni mientras carga el dashboard).
 const LandingPage = lazy(() => import('./components/landing/LandingPage').then((m) => ({ default: m.LandingPage })));
 
-type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'awp' | 'dotacion' | 'cuadrillas' | 'config_bot' | 'catalogos';
+type Vista = 'cartera' | 'ingesta_ia' | 'revision_lote' | 'cubicador' | 'solicitudes' | 'biblioteca_pids' | 'constructor_specs' | 'awp' | 'dotacion' | 'catalogos';
 
 interface Perfil {
   estado_cuenta: 'pendiente' | 'aprobado' | 'rechazado';
@@ -319,23 +317,7 @@ function App() {
                     onClick={() => { setVista('dotacion'); setDocSeleccionado(null); }}
                     className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
                   >
-                    Dotación (Avanzado)
-                  </Button>
-                  <Button
-                    variant={vista === 'cuadrillas' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => { setVista('cuadrillas'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
-                  >
-                    Cuadrillas
-                  </Button>
-                  <Button
-                    variant={vista === 'config_bot' ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => { setVista('config_bot'); setDocSeleccionado(null); }}
-                    className="py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-muted hover:text-foreground"
-                  >
-                    WhatsApp Bot
+                    Dotación
                   </Button>
                 </div>
               )}
@@ -489,17 +471,7 @@ function App() {
           />
         )}
 
-        {vista === 'cuadrillas' && proyectoActivo && (
-          <GestionCuadrillas
-            proyectoId={proyectoActivo}
-          />
-        )}
 
-        {vista === 'config_bot' && proyectoActivo && (
-          <ConfiguracionBotPersonal
-            proyectoId={proyectoActivo}
-          />
-        )}
 
         {vista === 'constructor_specs' && docSeleccionado && (
           <ConstructorEspecificaciones
