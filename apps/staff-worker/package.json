@@ -1,0 +1,17 @@
+{
+  "name": "@lukeapp/staff-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LukeAPP v4 — Worker de gestión de personal, asistencia y cuadrillas en terreno (Integración Buk + WhatsApp)",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

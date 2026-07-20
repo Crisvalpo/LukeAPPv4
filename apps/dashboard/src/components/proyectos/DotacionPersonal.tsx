@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button } from '../ui/Button';
+import { useHeaderActions } from '../../hooks/useHeaderActions';
 
 interface DotacionPersonalProps {
   proyectoId: string;
@@ -12,6 +13,8 @@ interface CampoPersonal {
   placeholder?: string;
   requerido?: boolean;
   esClave?: boolean;
+  esSelect?: boolean;
+  opciones?: { value: string; label: string }[];
 }
 
 interface FilaTabla {
@@ -23,16 +26,37 @@ interface FilaTabla {
 }
 
 const CAMPOS: CampoPersonal[] = [
-  { key: 'estampa', label: 'Estampa', esClave: true, requerido: true, placeholder: 'ej: SOL-014' },
+  { key: 'rut', label: 'RUT', esClave: true, requerido: true, placeholder: 'ej: 12345678K' },
   { key: 'nombre', label: 'Nombre', requerido: true, placeholder: 'ej: Juan Pérez' },
-  { key: 'especialidad', label: 'Especialidad', placeholder: 'ej: Soldador 6G' },
-  { key: 'certificacion', label: 'Certificación', placeholder: 'ej: ASME IX vigente hasta 12/2026' },
+  { key: 'cargo', label: 'Cargo', requerido: true, placeholder: 'ej: Soldador, Capataz, Ayudante' },
+  { key: 'especialidad', label: 'Especialidad', placeholder: 'ej: piping, civiles, mecanica' },
+  { key: 'telefono', label: 'Teléfono', placeholder: 'ej: +56912345678' },
+  { key: 'centro_costo', label: 'Centro Costo', placeholder: 'ej: EIMI00413' },
+  { key: 'estampa', label: 'Estampa', placeholder: 'ej: SOL-014' },
+  {
+    key: 'activo',
+    label: 'Estado',
+    esSelect: true,
+    opciones: [
+      { value: 'true', label: 'Activo' },
+      { value: 'false', label: 'Inactivo' },
+    ],
+  },
 ];
 
-const filaVacia = (): Record<string, string> => Object.fromEntries(CAMPOS.map((c) => [c.key, '']));
+const filaVacia = (): Record<string, string> => {
+  const valores = Object.fromEntries(CAMPOS.map((c) => [c.key, '']));
+  valores.activo = 'true'; // Activo por defecto
+  return valores;
+};
 
 const valoresDesdeObjeto = (obj: Record<string, any>): Record<string, string> =>
-  Object.fromEntries(CAMPOS.map((c) => [c.key, obj[c.key] != null ? String(obj[c.key]) : '']));
+  Object.fromEntries(
+    CAMPOS.map((c) => [
+      c.key,
+      obj[c.key] != null ? String(obj[c.key]) : c.key === 'activo' ? 'true' : '',
+    ])
+  );
 
 export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }) => {
   const [datos, setDatos] = useState<any[]>([]);
@@ -47,7 +71,7 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
         .from('cat_personal')
         .select('*')
         .eq('proyecto_id', proyectoId)
-        .order('estampa');
+        .order('nombre');
       if (error) throw error;
       setDatos(data ?? []);
     } catch (e) {
@@ -97,7 +121,16 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
       const payload: Record<string, any> = { proyecto_id: proyectoId };
       CAMPOS.forEach((campo) => {
         const valorCrudo = fila.valores[campo.key]?.trim() ?? '';
-        payload[campo.key] = campo.esClave ? valorCrudo.toUpperCase() : (valorCrudo || null);
+        if (campo.key === 'activo') {
+          payload[campo.key] = valorCrudo === 'true';
+        } else if (campo.esClave) {
+          // El RUT o campos clave en mayúsculas y normalizados
+          payload[campo.key] = campo.key === 'rut'
+            ? valorCrudo.toUpperCase().replace(/[^0-9K]/g, '')
+            : valorCrudo.toUpperCase();
+        } else {
+          payload[campo.key] = valorCrudo || null;
+        }
       });
 
       if (fila.id) {
@@ -122,7 +155,7 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
       setFilas((prev) => prev.filter((f) => f.key !== fila.key));
       return;
     }
-    if (!confirm('¿Estás seguro de que deseas eliminar esta persona de la dotación del proyecto?')) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar esta persona del personal del proyecto?')) return;
 
     try {
       const { error } = await supabase.from('cat_personal').delete().eq('id', fila.id);
@@ -133,20 +166,24 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
     }
   };
 
+  // Registrar la acción primaria en el header superior usando el hook useHeaderActions
+  useHeaderActions(
+    <Button variant="primary" size="sm" onClick={handleAgregarFilaManual}>
+      + Agregar Personal
+    </Button>
+  );
+
   return (
     <div className="flex-grow p-6 space-y-4 bg-background text-foreground font-sans flex flex-col h-[calc(100vh-4rem)]">
       <div className="border-b border-border pb-4 shrink-0">
-        <h2 className="text-xl font-bold text-white tracking-tight">Dotación</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Personal & Dotación</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Personal certificado del proyecto (soldadores, inspectores, aplicadores) — se usa luego en los registros de ejecución de terreno.
+          Identidad unificada (Buk) y personal certificado del proyecto. Administra operarios, soldadores, supervisores y capataces.
         </p>
       </div>
 
       <div className="flex items-center justify-between shrink-0">
-        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Personal ({datos.length})</h4>
-        <Button variant="outline" size="sm" onClick={handleAgregarFilaManual}>
-          + Agregar Fila
-        </Button>
+        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Personal registrado ({datos.length})</h4>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto border border-border rounded-lg">
@@ -166,13 +203,13 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
             {loading ? (
               <tr>
                 <td colSpan={CAMPOS.length + 2} className="p-4 text-center text-muted-foreground">
-                  Cargando dotación...
+                  Cargando nómina de personal...
                 </td>
               </tr>
             ) : filas.length === 0 ? (
               <tr>
                 <td colSpan={CAMPOS.length + 2} className="p-4 text-center text-muted-foreground">
-                  Sin personal registrado. Agrega una fila manualmente.
+                  Sin personal registrado. Agrega una persona haciendo clic en el botón de la barra superior.
                 </td>
               </tr>
             ) : (
@@ -190,15 +227,29 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
                   </td>
                   {CAMPOS.map((campo) => (
                     <td key={campo.key} className="p-1 align-middle">
-                      <input
-                        type="text"
-                        placeholder={campo.placeholder}
-                        value={fila.valores[campo.key] ?? ''}
-                        onChange={(e) => handleCambiarValor(fila.key, campo.key, e.target.value)}
-                        className={`w-full bg-transparent border border-transparent px-1.5 py-1 rounded text-xs focus:outline-none focus:bg-panel focus:border-accent ${
-                          campo.esClave ? 'uppercase font-extrabold text-white' : 'font-medium text-foreground'
-                        }`}
-                      />
+                      {campo.esSelect ? (
+                        <select
+                          value={fila.valores[campo.key] ?? 'true'}
+                          onChange={(e) => handleCambiarValor(fila.key, campo.key, e.target.value)}
+                          className="w-full bg-transparent border border-transparent px-1.5 py-1 rounded text-xs focus:outline-none focus:bg-panel focus:border-accent text-foreground font-medium"
+                        >
+                          {campo.opciones?.map((o) => (
+                            <option key={o.value} value={o.value} className="bg-panel text-white">
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder={campo.placeholder}
+                          value={fila.valores[campo.key] ?? ''}
+                          onChange={(e) => handleCambiarValor(fila.key, campo.key, e.target.value)}
+                          className={`w-full bg-transparent border border-transparent px-1.5 py-1 rounded text-xs focus:outline-none focus:bg-panel focus:border-accent ${
+                            campo.esClave ? 'uppercase font-extrabold text-white' : 'font-medium text-foreground'
+                          }`}
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="p-1 text-right whitespace-nowrap align-middle">
