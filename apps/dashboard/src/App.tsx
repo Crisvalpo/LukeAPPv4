@@ -53,6 +53,8 @@ function App() {
   const [proyectoActivo, setProyectoActivo] = useState<string | null>(null);
   const [docSeleccionado, setDocSeleccionado] = useState<string | null>(null);
   const [menuDotacionAbierto, setMenuDotacionAbierto] = useState(false);
+  const [triggerAgregarPersonal, setTriggerAgregarPersonal] = useState(0);
+  const [triggerCrearCuadrilla, setTriggerCrearCuadrilla] = useState(0);
 
   const [membresias, setMembresias] = useState<any[]>([]);
   const [proyectoActivoDetalle, setProyectoActivoDetalle] = useState<{ codigo: string; nombre: string } | null>(null);
@@ -352,6 +354,29 @@ function App() {
                           >
                             WhatsApp Bot
                           </button>
+                          <div className="h-px bg-border/40 my-1" />
+                          <button
+                            onClick={() => {
+                              setVista('dotacion');
+                              setDocSeleccionado(null);
+                              setTriggerAgregarPersonal((prev) => prev + 1);
+                              setMenuDotacionAbierto(false);
+                            }}
+                            className="text-left px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 hover:bg-card/60 transition-colors"
+                          >
+                            + Registrar Personal
+                          </button>
+                          <button
+                            onClick={() => {
+                              setVista('cuadrillas');
+                              setDocSeleccionado(null);
+                              setTriggerCrearCuadrilla((prev) => prev + 1);
+                              setMenuDotacionAbierto(false);
+                            }}
+                            className="text-left px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-accent hover:bg-card/60 transition-colors"
+                          >
+                            + Crear Cuadrilla
+                          </button>
                         </div>
                       </>
                     )}
@@ -505,12 +530,14 @@ function App() {
         {vista === 'dotacion' && proyectoActivo && (
           <DotacionPersonal
             proyectoId={proyectoActivo}
+            triggerAgregar={triggerAgregarPersonal}
           />
         )}
 
         {vista === 'cuadrillas' && proyectoActivo && (
           <GestionCuadrillas
             proyectoId={proyectoActivo}
+            triggerCrear={triggerCrearCuadrilla}
           />
         )}
 

@@ -5,6 +5,7 @@ import { useHeaderActions } from '../../hooks/useHeaderActions';
 
 interface GestionCuadrillasProps {
   proyectoId: string;
+  triggerCrear?: number;
 }
 
 interface Cuadrilla {
@@ -38,7 +39,7 @@ interface MiembroProyecto {
   usuarios: { nombre: string; email: string } | null;
 }
 
-export const GestionCuadrillas: React.FC<GestionCuadrillasProps> = ({ proyectoId }) => {
+export const GestionCuadrillas: React.FC<GestionCuadrillasProps> = ({ proyectoId, triggerCrear }) => {
   const [cuadrillas, setCuadrillas] = useState<Cuadrilla[]>([]);
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
@@ -113,6 +114,12 @@ export const GestionCuadrillas: React.FC<GestionCuadrillasProps> = ({ proyectoId
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (triggerCrear && triggerCrear > 0) {
+      setMostrarModal(true);
+    }
+  }, [triggerCrear]);
 
   useEffect(() => {
     fetchData();
@@ -207,12 +214,7 @@ export const GestionCuadrillas: React.FC<GestionCuadrillasProps> = ({ proyectoId
     presentesHoyIds.includes(p.id) && !operariosAsignadosHoyIds.includes(p.id)
   );
 
-  // Registro del botón principal en el Header Actions del Dashboard
-  useHeaderActions(
-    <Button variant="primary" size="sm" onClick={() => setMostrarModal(true)}>
-      + Crear Cuadrilla
-    </Button>
-  );
+
 
   return (
     <div className="flex-grow p-6 space-y-6 bg-background text-foreground font-sans flex flex-col h-[calc(100vh-4rem)]">

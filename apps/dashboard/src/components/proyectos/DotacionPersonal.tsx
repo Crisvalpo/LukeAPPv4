@@ -5,6 +5,7 @@ import { useHeaderActions } from '../../hooks/useHeaderActions';
 
 interface DotacionPersonalProps {
   proyectoId: string;
+  triggerAgregar?: number;
 }
 
 interface CampoPersonal {
@@ -58,7 +59,7 @@ const valoresDesdeObjeto = (obj: Record<string, any>): Record<string, string> =>
     ])
   );
 
-export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }) => {
+export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId, triggerAgregar }) => {
   const [datos, setDatos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filas, setFilas] = useState<FilaTabla[]>([]);
@@ -80,6 +81,12 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (triggerAgregar && triggerAgregar > 0) {
+      handleAgregarFilaManual();
+    }
+  }, [triggerAgregar]);
 
   useEffect(() => {
     fetchPersonal();
@@ -166,12 +173,7 @@ export const DotacionPersonal: React.FC<DotacionPersonalProps> = ({ proyectoId }
     }
   };
 
-  // Registrar la acción primaria en el header superior usando el hook useHeaderActions
-  useHeaderActions(
-    <Button variant="primary" size="sm" onClick={handleAgregarFilaManual}>
-      + Agregar Personal
-    </Button>
-  );
+
 
   return (
     <div className="flex-grow p-6 space-y-4 bg-background text-foreground font-sans flex flex-col h-[calc(100vh-4rem)]">
