@@ -128,28 +128,7 @@ function App() {
     setVista('ingesta_ia');
   };
 
-  const handleAbrirCubicador = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('cubicador');
-  };
 
-  const handleAbrirPids = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('biblioteca_pids');
-  };
-  const handleAbrirCatalogos = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('catalogos');
-  };
-  const handleAbrirAWP = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('awp');
-  };
-
-  const handleAbrirDotacion = (proyectoId: string) => {
-    setProyectoActivo(proyectoId);
-    setVista('dotacion');
-  };
 
   const handleAbrirConstructor = (docId: string) => {
     setDocSeleccionado(docId);
@@ -479,11 +458,6 @@ function App() {
         {vista === 'cartera' && (
           <CarteraProyectos
             onAbrirIngesta={handleAbrirIngesta}
-            onAbrirCatalogos={handleAbrirCatalogos}
-            onAbrirCubicador={handleAbrirCubicador}
-            onAbrirPids={handleAbrirPids}
-            onAbrirAWP={handleAbrirAWP}
-            onAbrirDotacion={handleAbrirDotacion}
             esGerencia={perfil?.acceso_global ?? false}
           />
         )}

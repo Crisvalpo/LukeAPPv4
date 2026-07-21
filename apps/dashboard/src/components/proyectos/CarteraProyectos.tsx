@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useHeaderActions } from '../../hooks/useHeaderActions';
 import { supabase } from '../../supabaseClient';
 import { NuevoProyectoModal } from './NuevoProyectoModal';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { useHeaderActions } from '../../hooks/useHeaderActions';
+
 
 export interface ProyectoKpis {
   id: string;
@@ -36,20 +37,17 @@ const ESTADO_META: Record<string, { label: string; color: string }> = {
 
 interface CarteraProyectosProps {
   onAbrirIngesta: (proyectoId: string) => void;
-  onAbrirCatalogos: (proyectoId: string) => void;
-  onAbrirCubicador: (proyectoId: string) => void;
-  onAbrirPids: (proyectoId: string) => void;
-  onAbrirAWP: (proyectoId: string) => void;
-  onAbrirDotacion: (proyectoId: string) => void;
   esGerencia: boolean;
 }
 
-export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, onAbrirCatalogos, onAbrirCubicador, onAbrirPids, onAbrirAWP, onAbrirDotacion, esGerencia }) => {
+
+export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirIngesta, esGerencia }) => {
+
   const [proyectos, setProyectos] = useState<ProyectoKpis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mostrarWizard, setMostrarWizard] = useState(false);
-  const [seleccionado, setSeleccionado] = useState<ProyectoKpis | null>(null);
+
 
   const fetchProyectos = useCallback(async () => {
     setLoading(true);
@@ -70,14 +68,6 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     fetchProyectos();
   }, [fetchProyectos]);
 
-  // Un usuario con un único proyecto no gana nada viendo la lista de
-  // cartera — entra directo al detalle. GERENCIA siempre ve la cartera,
-  // incluso si hoy solo hay un proyecto (va a crecer).
-  useEffect(() => {
-    if (!esGerencia && !seleccionado && proyectos.length === 1) {
-      setSeleccionado(proyectos[0]);
-    }
-  }, [esGerencia, proyectos, seleccionado]);
 
   const handleProyectoCreado = (proyectoId: string) => {
     setMostrarWizard(false);
@@ -85,179 +75,19 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
     onAbrirIngesta(proyectoId);
   };
 
-  // El borrado de un proyecto solo elimina en cascada las FILAS de las tablas
-  // (doc_biblioteca, list_pid, import_lotes, etc.) — los archivos físicos en
-  // Storage viven en un sistema aparte sin FK hacia proyectos, así que hay que
-  // recolectar sus paths ANTES del DELETE (la cascada los borra de la tabla)
-  // y removerlos explícitamente para no dejar carpetas huérfanas en los buckets.
-  const limpiarStorageProyecto = async (proyectoId: string) => {
-    try {
-      const [docs, pids, lotes] = await Promise.all([
-        supabase.from('doc_biblioteca').select('storage_path').eq('proyecto_id', proyectoId),
-        supabase.from('list_pid').select('pdf_path').eq('proyecto_id', proyectoId),
-        supabase.from('import_lotes').select('archivo_storage_path').eq('proyecto_id', proyectoId),
-      ]);
-
-      const pathsDocumentos = [
-        ...(docs.data ?? []).map((d) => d.storage_path),
-        ...(pids.data ?? []).map((p) => p.pdf_path),
-      ].filter((p): p is string => !!p);
-
-      const pathsImportaciones = (lotes.data ?? [])
-        .map((l) => l.archivo_storage_path)
-        .filter((p): p is string => !!p);
-
-      if (pathsDocumentos.length > 0) {
-        const { error } = await supabase.storage.from('documentos').remove(pathsDocumentos);
-        if (error) console.error('[CarteraProyectos] error limpiando bucket documentos:', error.message);
-      }
-      if (pathsImportaciones.length > 0) {
-        const { error } = await supabase.storage.from('importaciones').remove(pathsImportaciones);
-        if (error) console.error('[CarteraProyectos] error limpiando bucket importaciones:', error.message);
-      }
-    } catch (e) {
-      console.error('[CarteraProyectos] error recolectando archivos de storage del proyecto:', e);
-    }
-  };
-
-  const handleEliminarProyecto = async (proyectoId: string, codigo: string) => {
-    const input = window.prompt(
-      `Estás a punto de eliminar permanentemente el proyecto ${codigo} y todos sus datos en cascada.\n\n` +
-      `Para confirmar esta acción irreversible, por favor escribe el nombre del proyecto (${codigo}) a continuación:`
-    );
-
-    if (input !== codigo) {
-      if (input !== null) {
-        alert('El nombre ingresado no coincide. Eliminación cancelada.');
-      }
-      return;
-    }
-
-    setLoading(true);
-    await limpiarStorageProyecto(proyectoId);
-    const { data, error: err } = await supabase.from('proyectos').delete().eq('id', proyectoId).select();
-    
-    if (err) {
-      alert(`Error al eliminar: ${err.message}`);
-      setLoading(false);
-    } else if (!data || data.length === 0) {
-      alert('⚠️ No se eliminó nada. Esto ocurre porque la Base de Datos bloqueó la acción (RLS).\n\nAsegúrate de haber ejecutado el script SQL de la migración 011 en el panel de Supabase para habilitar el borrado.');
-      setLoading(false);
-    } else {
-      setSeleccionado(null);
-      fetchProyectos();
-      alert(`El proyecto ${codigo} ha sido eliminado permanentemente.`);
-    }
-  };
 
   const pctAvance = (p: ProyectoKpis) =>
     p.n_juntas > 0 ? Math.round((p.n_juntas_ejecutadas / p.n_juntas) * 100) : 0;
 
+  // Botón "+ Nuevo Proyecto" solo para GERENCIA — acción propia de la vista cartera.
   useHeaderActions(
-    seleccionado ? (
-      <>
-        <Button variant="outline" size="sm" onClick={() => setSeleccionado(null)}>
-          ← Volver
-        </Button>
-        <Button variant="primary" size="sm" onClick={() => onAbrirIngesta(seleccionado.id)}>
-          1. Documentos
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onAbrirCatalogos(seleccionado.id)}>
-          2. Catálogos
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => onAbrirCubicador(seleccionado.id)}>
-          3. Datos / Line List
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onAbrirPids(seleccionado.id)}>
-          Planos P&ID
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onAbrirAWP(seleccionado.id)}>
-          AWP (Avanzado)
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onAbrirDotacion(seleccionado.id)}>
-          Dotación (Avanzado)
-        </Button>
-        {esGerencia && (
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => handleEliminarProyecto(seleccionado.id, seleccionado.codigo)}
-            title="Eliminar proyecto permanentemente"
-          >
-            Eliminar
-          </Button>
-        )}
-      </>
-    ) : esGerencia ? (
+    esGerencia ? (
       <Button variant="primary" size="sm" onClick={() => setMostrarWizard(true)}>
         + Nuevo Proyecto
       </Button>
     ) : null
   );
 
-  // ─── Panel drill-down de un proyecto ───
-  if (seleccionado) {
-    const meta = INDUSTRIA_META[seleccionado.industria];
-    const estado = ESTADO_META[seleccionado.estado] ?? { label: seleccionado.estado, color: 'text-slate-400' };
-    const kpis = [
-      { label: 'Líneas', valor: seleccionado.n_lineas },
-      { label: 'Isométricos', valor: seleccionado.n_isos },
-      { label: 'Spools', valor: seleccionado.n_spools },
-      { label: 'Juntas', valor: seleccionado.n_juntas },
-      { label: 'Ítems MTO', valor: seleccionado.n_mto },
-      { label: 'Juntas ejecutadas', valor: seleccionado.n_juntas_ejecutadas },
-    ];
-
-    return (
-      <div className="max-w-6xl mx-auto p-8">
-        <Card className="p-8">
-          <div className="flex flex-wrap justify-between items-start gap-6">
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-3xl font-bold text-white m-0">{seleccionado.codigo}</h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${meta.bg} ${meta.color}`}>
-                  {meta.icon} {meta.label}
-                </span>
-                <span className={`text-sm font-semibold ${estado.color}`}>
-                  ● {estado.label}
-                </span>
-              </div>
-              <p className="text-muted text-lg mt-3">{seleccionado.nombre}</p>
-              <p className="text-slate-500 text-sm mt-1">
-                Mandante: {seleccionado.mandante ?? '—'}
-              </p>
-            </div>
-          </div>
-
-          {/* Avance físico de juntas */}
-          <div className="mt-8">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-slate-300 text-sm font-semibold">Avance físico (juntas ejecutadas)</span>
-              <span className="text-accent font-bold">{pctAvance(seleccionado)}%</span>
-            </div>
-            <div className="h-2.5 bg-background rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-accent transition-all duration-500" 
-                style={{ width: `${pctAvance(seleccionado)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8">
-            {kpis.map((k) => (
-              <div key={k.label} className="bg-background border border-border rounded-xl p-5 text-center">
-                <div className="text-2xl font-extrabold text-white">
-                  {k.valor.toLocaleString('es-CL')}
-                </div>
-                <div className="text-xs text-muted mt-1.5 font-medium">{k.label}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   // ─── Vista de cartera ───
   return (
@@ -293,7 +123,7 @@ export const CarteraProyectos: React.FC<CarteraProyectosProps> = ({ onAbrirInges
             return (
               <Card
                 key={p.id}
-                onClick={() => setSeleccionado(p)}
+                onClick={() => onAbrirIngesta(p.id)}
                 className="p-6 cursor-pointer hover:-translate-y-1 hover:border-accent transition-all bg-panel/80 backdrop-blur-md"
               >
                 <div className="flex justify-between items-center mb-4">
